@@ -11,14 +11,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-
+@NoArgsConstructor
 public class User extends BaseTimeEntity {
 
 	@Id
@@ -34,4 +34,11 @@ public class User extends BaseTimeEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private UserRole userRole;
+
+	@Builder
+	private User(String userId, String password, UserRole userRole){
+		this.userId = userId;
+		this.password = password;
+		this.userRole = userRole;
+	}
 }
