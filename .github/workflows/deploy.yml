@@ -16,11 +16,17 @@ jobs:
       - name: 🔐 application.properties 생성
         run: |
           mkdir -p src/main/resources
-#          echo "spring.datasource.url=${{ secrets.DB_URL }}" >> src/main/resources/application.properties
-#          echo "spring.datasource.username=${{ secrets.DB_USERNAME }}" >> src/main/resources/application.properties
-#          echo "spring.datasource.password=${{ secrets.DB_PASSWORD }}" >> src/main/resources/application.properties
-#          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> src/main/resources/application.properties
-#          echo "spring.jpa.hibernate.ddl-auto=update" >> src/main/resources/application.properties
+          echo "spring.datasource.url=${{ secrets.DB_URL }}" >> src/main/resources/application.properties
+          echo "spring.datasource.username=${{ secrets.DB_USERNAME }}" >> src/main/resources/application.properties
+          echo "spring.datasource.password=${{ secrets.DB_PASSWORD }}" >> src/main/resources/application.properties
+          echo "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver" >> src/main/resources/application.properties
+          echo "spring.jpa.hibernate.ddl-auto=update" >> src/main/resources/application.properties
+          echo "spring.jpa.show-sql=true" >> src/main/resources/application.properties
+          echo "spring.jpa.properties.hibernate.format_sql=true" >> src/main/resources/application.properties
+          echo "spring.jwt.secret=${{ secrets.JWT_SECRET }}" >> src/main/resources/application.properties
+          echo "spring.jwt.access-token-duration=10D" >> src/main/resources/application.properties
+          echo "spring.jwt.refresh-token-duration=100D" >> src/main/resources/application.properties
+          
 
       - name: ☕ Gradle Build (jar 생성)
         run: ./gradlew build -x test
