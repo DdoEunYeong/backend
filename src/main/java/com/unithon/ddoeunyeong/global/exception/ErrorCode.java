@@ -8,6 +8,9 @@ import lombok.Getter;
 
 @Getter
 public enum ErrorCode {
+	ALREADY_SIGNUP(BAD_REQUEST,410,"이미 가입된 회원입니다."),
+
+	INVALID_PASSWORD(BAD_REQUEST,411,"잘못된 비밀번호입니다."),
 
 	LOGIN_FAIL(HttpStatus.BAD_REQUEST,400,"로그인에 오류가 발생하였습니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,500,"서버에 오류가 발생하였습니다."),

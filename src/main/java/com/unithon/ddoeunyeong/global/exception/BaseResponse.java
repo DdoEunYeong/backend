@@ -27,4 +27,11 @@ public class BaseResponse<T> {
         this.code = code;
         this.data = data;
     }
+
+    @Builder
+    public BaseResponse(boolean isSuccess, String message, int code){
+        this.isSuccess = isSuccess;
+        this.message = message;
+        this.code = code;
+    }
 }
