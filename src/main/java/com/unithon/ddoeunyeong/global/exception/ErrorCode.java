@@ -10,6 +10,8 @@ import lombok.Getter;
 public enum ErrorCode {
 	ALREADY_SIGNUP(BAD_REQUEST,410,"이미 가입된 회원입니다."),
 
+
+	NO_CHILD(BAD_REQUEST,413,"존재하지 않는 어린이입니다."),
 	INVALID_PASSWORD(BAD_REQUEST,411,"잘못된 비밀번호입니다."),
 
 	UPLOAD_FAIL(BAD_REQUEST,412,"업로드에 실패하였습니다."),
