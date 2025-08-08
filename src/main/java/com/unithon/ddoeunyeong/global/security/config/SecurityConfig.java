@@ -1,5 +1,7 @@
 package com.unithon.ddoeunyeong.global.security.config;
 
+import static org.springframework.security.config.Customizer.*;
+
 import java.util.List;
 
 
@@ -28,6 +30,7 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
+			.cors(withDefaults())
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.csrf(AbstractHttpConfigurer::disable)
 			.sessionManagement(session ->

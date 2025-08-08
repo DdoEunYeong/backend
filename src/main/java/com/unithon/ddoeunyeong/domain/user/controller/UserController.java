@@ -29,20 +29,20 @@ public class UserController {
 
 	@Operation(summary = "회원가입 API")
 	@PostMapping("/signup")
-	public BaseResponse<Object> signup(@RequestBody SignUpRequest request){
+	public BaseResponse<Void> signup(@RequestBody SignUpRequest request){
 		return userService.signUp(request);
 	}
 
 	@Operation(summary = "로그아웃 API")
 	@PatchMapping("/logout")
-	public BaseResponse<Object> logout(@RequestParam String accessToken){
+	public BaseResponse<Void> logout(@RequestParam String accessToken){
 		return userService.logout(accessToken);
 	}
 
 
 	@Operation(summary = "회원탈퇴 API")
 	@DeleteMapping("/signout")
-	public BaseResponse<Object> signout(@RequestParam String accessToken){
+	public BaseResponse<Void> signout(@RequestParam String accessToken){
 		return userService.signout(accessToken);
 	}
 

@@ -28,7 +28,7 @@ public class UserService {
 	private final RefreshTokenRepository refreshTokenRepository;
 
 	@Transactional
-	public BaseResponse<Object> signUp(SignUpRequest request){
+	public BaseResponse<Void> signUp(SignUpRequest request){
 
 		if(userRepository.existsByUserId(request.userId())){
 			throw new CustomException(ErrorCode.ALREADY_SIGNUP);
@@ -42,7 +42,7 @@ public class UserService {
 
 		userRepository.save(user);
 
-		return BaseResponse.builder()
+		return BaseResponse.<Void>builder()
 			.code(201)
 			.isSuccess(true)
 			.message("회원가입에 성공하였습니다.")
@@ -59,7 +59,7 @@ public class UserService {
 			throw new CustomException(ErrorCode.INVALID_PASSWORD);
 		}
 
-		TokenResponse token = jwtTokenProvider.createToken(user.getUserId().toString());
+		TokenResponse token = jwtTokenProvider.createToken(user.getId().toString());
 
 		return BaseResponse.<TokenResponse>builder()
 			.code(200)
@@ -70,12 +70,12 @@ public class UserService {
 	}
 
 	@Transactional
-	public BaseResponse<Object> logout(String accessToken) {
+	public BaseResponse<Void> logout(String accessToken) {
 		String userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
 		refreshTokenRepository.deleteByUserId(Long.parseLong(userId));
 
-		return BaseResponse.builder()
+		return BaseResponse.<Void>builder()
 			.code(200)
 			.isSuccess(true)
 			.message("로그아웃 되었습니다.")
@@ -84,7 +84,7 @@ public class UserService {
 
 
 	@Transactional
-	public BaseResponse<Object> signout(String accessToken) {
+	public BaseResponse<Void> signout(String accessToken) {
 		String userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 		Long id = Long.parseLong(userId);
 
@@ -94,7 +94,7 @@ public class UserService {
 		refreshTokenRepository.deleteByUserId(id);
 		userRepository.delete(user);
 
-		return BaseResponse.builder()
+		return BaseResponse.<Void>builder()
 			.code(200)
 			.isSuccess(true)
 			.message("회원 탈퇴가 완료되었습니다.")
