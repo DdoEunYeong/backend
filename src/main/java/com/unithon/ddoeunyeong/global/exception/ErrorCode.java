@@ -12,6 +12,8 @@ public enum ErrorCode {
 
 	INVALID_PASSWORD(BAD_REQUEST,411,"잘못된 비밀번호입니다."),
 
+	UPLOAD_FAIL(BAD_REQUEST,412,"업로드에 실패하였습니다."),
+
 	LOGIN_FAIL(HttpStatus.BAD_REQUEST,400,"로그인에 오류가 발생하였습니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,500,"서버에 오류가 발생하였습니다."),
 	JWT_KEY_GENERATION_FAILED(HttpStatus.BAD_REQUEST,400,"JWT 키 생성에 실패하였습니다."),
