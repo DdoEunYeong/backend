@@ -27,6 +27,8 @@ jobs:
           echo "spring.jwt.access-token-duration=10D" >> src/main/resources/application.properties
           echo "spring.jwt.refresh-token-duration=100D" >> src/main/resources/application.properties
           
+          echo "gpt.api-key=Bearer ${{ secrets.OPENAI_KEY }}" >> src/main/resources/application.properties
+          echo "ai.url=${{ secrets.OPENAI_KEY }}" >> src/main/resources/application.properties
 
       - name: ☕ Gradle Build (jar 생성)
         run: ./gradlew build -x test
