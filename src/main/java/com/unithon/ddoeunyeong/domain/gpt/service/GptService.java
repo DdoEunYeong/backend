@@ -63,15 +63,14 @@ public class GptService {
 
 
 	public GptResponse sendToFastApi(MultipartFile audioFile) throws IOException {
-		File tempFile = File.createTempFile("temp-audio", ".webm"); // 확장자는 받은 타입에 따라 조정
+		File tempFile = File.createTempFile("temp-audio", ".m4a");
 		audioFile.transferTo(tempFile);
-
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-		body.add("audio", new FileSystemResource(tempFile));
+		body.add("file", new FileSystemResource(tempFile)); // ✅ FastAPI의 파라미터 이름에 맞춤
 
 		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
@@ -81,13 +80,11 @@ public class GptService {
 			String.class
 		);
 
-
 		tempFile.delete();
 
-
-		String sttAnswer =  response.getBody();
+		String sttAnswer = response.getBody();
 
 		return askGpt(sttAnswer);
-
 	}
+
 }
