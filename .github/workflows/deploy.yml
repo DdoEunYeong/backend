@@ -28,7 +28,16 @@ jobs:
           echo "spring.jwt.refresh-token-duration=100D" >> src/main/resources/application.properties
           
           echo "gpt.api-key=Bearer ${{ secrets.OPENAI_KEY }}" >> src/main/resources/application.properties
-          echo "ai.url=${{ secrets.OPENAI_KEY }}" >> src/main/resources/application.properties
+          echo "ai.url=${{ secrets.AI_URL }}" >> src/main/resources/application.properties
+          
+         
+          echo "cloud.aws.s3.bucket=${{ secrets.S3_BUCKET_NAME }}" >> src/main/resources/application.properties
+          echo "cloud.aws.region.static=${{ secrets.S3_BUCKET_REGION }}" >> src/main/resources/application.properties
+          echo "cloud.aws.stack.auto=false" >> src/main/resources/application.properties
+          echo "cloud.aws.credentials.access-key=${{ secrets.AWS_ACCESS_KEY_ID }}" >> src/main/resources/application.properties
+          echo "cloud.aws.credentials.secret-key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> src/main/resources/application.properties
+
+
 
       - name: ☕ Gradle Build (jar 생성)
         run: ./gradlew build -x test

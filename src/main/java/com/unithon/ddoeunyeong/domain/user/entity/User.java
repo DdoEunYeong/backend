@@ -1,5 +1,8 @@
 package com.unithon.ddoeunyeong.domain.user.entity;
 
+import java.util.List;
+
+import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.global.security.time.BaseTimeEntity;
 
 import jakarta.persistence.Column;
@@ -9,6 +12,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +35,9 @@ public class User extends BaseTimeEntity {
 
 	@Column(nullable = false)
 	private String password;
+
+	//부모의 이름
+	private String name;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
