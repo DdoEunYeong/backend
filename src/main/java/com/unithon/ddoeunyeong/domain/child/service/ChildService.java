@@ -1,9 +1,13 @@
 package com.unithon.ddoeunyeong.domain.child.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.unithon.ddoeunyeong.domain.child.dto.ChildDeleteRequest;
+import com.unithon.ddoeunyeong.domain.child.dto.ChildLists;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildRequest;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.domain.child.entity.Gender;
@@ -62,6 +66,20 @@ public class ChildService {
 			.data(null)
 			.message("아이를 뺐습니다.")
 			.code(200)
+			.build();
+	}
+
+	public BaseResponse<List<ChildLists>> getAllChild(Long userId){
+
+		List<ChildLists> lists = childRepository.findAllByUserId(userId)
+			.stream().map(m ->new ChildLists(m.getId(),m.getName()))
+			.toList();
+
+		return BaseResponse.<List<ChildLists>>builder()
+			.code(200)
+			.message("모든 아이들을 조회하였습니다.")
+			.data(lists)
+			.isSuccess(true)
 			.build();
 	}
 
