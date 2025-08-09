@@ -1,9 +1,6 @@
 package com.unithon.ddoeunyeong.domain.user.entity;
 
-import java.util.List;
-
-import com.unithon.ddoeunyeong.domain.child.entity.Child;
-import com.unithon.ddoeunyeong.global.security.time.BaseTimeEntity;
+import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,9 +9,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,9 +38,10 @@ public class User extends BaseTimeEntity {
 	private UserRole userRole;
 
 	@Builder
-	private User(String userId, String password, UserRole userRole){
+	private User(String userId, String password, UserRole userRole,String name){
 		this.userId = userId;
 		this.password = password;
 		this.userRole = userRole;
+		this.name = name;
 	}
 }
