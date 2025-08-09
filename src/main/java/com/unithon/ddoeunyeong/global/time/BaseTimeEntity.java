@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.global.security.time;
+package com.unithon.ddoeunyeong.global.time;
 
 import java.time.LocalDateTime;
 
