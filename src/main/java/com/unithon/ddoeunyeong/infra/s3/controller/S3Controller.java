@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.domain.s3.controller;
+package com.unithon.ddoeunyeong.infra.s3.controller;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.unithon.ddoeunyeong.domain.s3.service.S3Service;
+import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +26,7 @@ public class S3Controller {
 		return BaseResponse.<String>builder()
 			.code(201)
 			.message("파일 업로드에 성공하였습니다.")
-			.data(s3Service.uploadImage(multipartFile))
+			.data(s3Service.uploadFile(multipartFile))
 			.isSuccess(true)
 			.build();
 	}

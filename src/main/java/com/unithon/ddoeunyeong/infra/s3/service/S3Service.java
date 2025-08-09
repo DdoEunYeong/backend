@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.domain.s3.service;
+package com.unithon.ddoeunyeong.infra.s3.service;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -37,7 +37,7 @@ public class S3Service {
 	@Value("${cloud.aws.credentials.secret-key}")
 	private String secretKey;
 
-	public String uploadImage(MultipartFile file) {
+	public String uploadFile(MultipartFile file) {
 
 		S3Client s3 = S3Client.builder()
 			.region(Region.of(region))

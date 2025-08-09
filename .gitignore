@@ -40,3 +40,4 @@ application.yml
 ./src/main/resources/application.properties
 
 resources/application.properties
+resources/application.yml
