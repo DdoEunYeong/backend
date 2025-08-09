@@ -31,10 +31,6 @@ public class Survey extends BaseTimeEntity {
 	private String temp;
 
 	@Builder
-	private Survey(String temp){
-		this.temp = temp;
-	}
-	@Builder
 	private Survey(String temp,Child child){
 		this.temp = temp;
 		this.child = child;
