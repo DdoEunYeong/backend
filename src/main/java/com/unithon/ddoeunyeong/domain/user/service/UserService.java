@@ -38,6 +38,7 @@ public class UserService {
 			.userId(request.userId())
 			.password(passwordEncoder.encode(request.password()))
 			.userRole(UserRole.USER)
+			.name(request.name())
 			.build();
 
 		userRepository.save(user);

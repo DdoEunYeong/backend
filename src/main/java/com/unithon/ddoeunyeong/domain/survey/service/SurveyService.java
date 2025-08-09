@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
+import com.unithon.ddoeunyeong.domain.gpt.dto.FirstGptResponse;
+import com.unithon.ddoeunyeong.domain.gpt.service.GptService;
 import com.unithon.ddoeunyeong.domain.survey.dto.SurveyRequest;
 import com.unithon.ddoeunyeong.domain.survey.entity.Survey;
 import com.unithon.ddoeunyeong.domain.survey.repository.SurveyRepository;
@@ -19,8 +21,9 @@ public class SurveyService {
 
 	private final SurveyRepository surveyRepository;
 	private final ChildRepository childRepository;
+	private final GptService gptService;
 
-	public BaseResponse<Void> createSurvey(SurveyRequest request){
+	public BaseResponse<FirstGptResponse> createSurvey(SurveyRequest request){
 
 		Child child = childRepository.findById(request.childId())
 			.orElseThrow(()-> new CustomException(ErrorCode.NO_CHILD));
@@ -31,10 +34,13 @@ public class SurveyService {
 
 		surveyRepository.save(survey);
 
-		return BaseResponse.<Void>builder()
+		String firstQuestion = gptService.makeFirstQuestion(survey);
+
+
+		return BaseResponse.<FirstGptResponse>builder()
 			.code(201)
 			.message("설문지를 작성하였습니다.")
-			.data(null)
+			.data(new FirstGptResponse(firstQuestion))
 			.isSuccess(true)
 			.build();
 	}
