@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -31,33 +32,59 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         sessionChunks.put(session.getId(), new ArrayList<>());
-        log.info("웹소켓 연결됨: {}", session.getId());
+        log.info("[WS][OPEN] 세션 오픈: id={} uri={}", session.getId(),
+                session.getUri() != null ? session.getUri() : "N/A");
     }
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
         byte[] payload = message.getPayload().array();
-        sessionChunks.get(session.getId()).add(payload);  // 사용자별로 누적
+        List<byte[]> list = sessionChunks.get(session.getId());
+        if (list == null) {
+            log.warn("[WS][BIN] 세션 저장소 없음. 새로 생성: id={}", session.getId());
+            list = new ArrayList<>();
+            sessionChunks.put(session.getId(), list);
+        }
+        list.add(payload);
+        log.debug("[WS][BIN] 바이너리 수신: id={} chunkSize={}B totalChunks={}",
+                session.getId(), payload.length, list.size());
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String msg = message.getPayload();
+        log.info("[WS][TXT] 텍스트 수신: id={} msg='{}'", session.getId(), msg);
         if ("end".equals(msg)) {
+            log.info("[WS][END] 업로드 시작: id={}", session.getId());
             String url = saveAndUpload(session.getId());
-            log.info("영상 업로드 완료: {}", url);
+            if (url != null) {
+                log.info("[WS][END] 업로드 완료: id={} url={}", session.getId(), url);
+            } else {
+                log.warn("[WS][END] 업로드 실패 또는 업로드할 청크 없음: id={}", session.getId());
+            }
         }
     }
 
     private String saveAndUpload(String sessionId) {
         List<byte[]> chunks = sessionChunks.get(sessionId);
-        if (chunks == null || chunks.isEmpty()) return null;
+        int chunkCount = chunks != null ? chunks.size() : 0;
+        if (chunks == null || chunks.isEmpty()) {
+            log.warn("[WS][SAVE] 저장할 청크 없음: id={}", sessionId);
+            return null;
+        }
 
         try {
+            log.info("[WS][SAVE] 파일 병합 시작: id={} chunks={}", sessionId, chunkCount);
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            long totalBytes = 0;
             for (byte[] chunk : chunks) {
                 baos.write(chunk);
+                totalBytes += chunk.length;
             }
+
+            log.info("[WS][SAVE] 병합 완료: id={} totalBytes={}B (~{} MB)",
+                    sessionId, totalBytes, String.format("%.2f", totalBytes / 1024.0 / 1024.0));
 
             MultipartFile multipartFile = new MockMultipartFile(
                     "recorded",
@@ -66,14 +93,20 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
                     baos.toByteArray()
             );
 
-            // 3. S3 업로드
+            log.info("[WS][S3] 업로드 시작: id={} filename={} size={}B",
+                    sessionId, multipartFile.getOriginalFilename(), multipartFile.getSize());
+
             String s3Url = s3Service.uploadFile(multipartFile);
 
+            log.info("[WS][S3] 업로드 성공: id={} url={}", sessionId, s3Url);
+
             sessionChunks.remove(sessionId);
+            log.debug("[WS][CLEANUP] 세션 청크 제거: id={}", sessionId);
+
             return s3Url;
 
         } catch (IOException e) {
-            log.error("영상 저장/업로드 실패", e);
+            log.error("[WS][SAVE] 영상 저장/업로드 실패: id=" + sessionId, e);
             return null;
         }
     }
@@ -81,12 +114,20 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessionChunks.remove(session.getId());
+        log.info("[WS][CLOSE] 세션 종료: id={} code={} reason={}",
+                session.getId(), status.getCode(), status.getReason());
     }
 
     public byte[] getLatestFrame(String sessionId) {
         List<byte[]> chunks = sessionChunks.get(sessionId);
-        if (chunks == null || chunks.isEmpty()) return null;
-        return chunks.get(chunks.size() - 1); // 마지막 프레임만 리턴
+        if (chunks == null || chunks.isEmpty()) {
+            log.debug("[WS][FRAME] 프레임 없음: id={}", sessionId);
+            return null;
+        }
+        byte[] last = chunks.get(chunks.size() - 1);
+        log.debug("[WS][FRAME] 마지막 프레임 조회: id={} size={}B index={}",
+                sessionId, last.length, chunks.size() - 1);
+        return last; // 마지막 프레임만 리턴
     }
 }
 
