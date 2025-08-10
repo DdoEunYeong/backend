@@ -35,6 +35,10 @@ public class Child {
 	//아이의 성별
 	private Gender gender;
 
+	//아이의 이미지
+	@Setter
+	private String imageUrl;
+
 	//아이의 성격
 	@Setter
 	private String characterType;
