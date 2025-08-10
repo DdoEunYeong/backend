@@ -46,7 +46,9 @@ public class GeminiService {
 	@Value("${ai.url}")
 	private  String fastApiUrl;
 
-	private static  final String instruction = "Completely erase the background and replace it with transparency";
+	private static  final String instruction = "Replace the background with complete transparency. " +
+		"Keep only the main subject (person/object) with precise edges. " +
+		"Make the background fully transparent PNG format.";
 
 	@Transactional
 	public BaseResponse<GeminiResponse> editImage(Long childId,MultipartFile file){
