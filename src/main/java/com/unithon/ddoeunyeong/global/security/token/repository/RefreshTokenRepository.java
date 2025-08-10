@@ -1,9 +1,9 @@
-package com.unithon.ddoeunyeong.token.repository;
+package com.unithon.ddoeunyeong.global.security.token.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.unithon.ddoeunyeong.token.entity.RefreshToken;
+import com.unithon.ddoeunyeong.global.security.token.entity.RefreshToken;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken,Long> {

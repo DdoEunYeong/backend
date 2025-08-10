@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.token.service;
+package com.unithon.ddoeunyeong.global.security.token.service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -18,9 +18,9 @@ import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
 import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
-import com.unithon.ddoeunyeong.token.dto.TokenResponse;
-import com.unithon.ddoeunyeong.token.entity.RefreshToken;
-import com.unithon.ddoeunyeong.token.repository.RefreshTokenRepository;
+import com.unithon.ddoeunyeong.global.security.token.dto.TokenResponse;
+import com.unithon.ddoeunyeong.global.security.token.entity.RefreshToken;
+import com.unithon.ddoeunyeong.global.security.token.repository.RefreshTokenRepository;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;

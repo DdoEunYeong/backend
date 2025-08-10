@@ -12,9 +12,9 @@ import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
-import com.unithon.ddoeunyeong.token.dto.TokenResponse;
-import com.unithon.ddoeunyeong.token.repository.RefreshTokenRepository;
-import com.unithon.ddoeunyeong.token.service.JwtTokenProvider;
+import com.unithon.ddoeunyeong.global.security.token.dto.TokenResponse;
+import com.unithon.ddoeunyeong.global.security.token.repository.RefreshTokenRepository;
+import com.unithon.ddoeunyeong.global.security.token.service.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
 

@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.token.dto;
+package com.unithon.ddoeunyeong.global.security.token.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

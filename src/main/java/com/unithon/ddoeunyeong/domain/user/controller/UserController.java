@@ -1,7 +1,6 @@
 package com.unithon.ddoeunyeong.domain.user.controller;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,7 +12,7 @@ import com.unithon.ddoeunyeong.domain.user.dto.LoginRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.SignUpRequest;
 import com.unithon.ddoeunyeong.domain.user.service.UserService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
-import com.unithon.ddoeunyeong.token.dto.TokenResponse;
+import com.unithon.ddoeunyeong.global.security.token.dto.TokenResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
