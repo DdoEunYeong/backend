@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.token.service;
+package com.unithon.ddoeunyeong.global.security.token.service;
 
 import java.io.IOException;
 

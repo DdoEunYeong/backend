@@ -1,5 +1,8 @@
 package com.unithon.ddoeunyeong.infra.websocket;
 
+import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
+import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
+import com.unithon.ddoeunyeong.domain.advice.service.AdviceService;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus.ABORTED;
+import static com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus.COMPLETED;
+
 
 @Slf4j
 @Component
@@ -26,28 +32,35 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
 
     private final S3Service s3Service; // S3 업로더 주입
 
+    private final AdviceService adviceService;
+
     // 사용자별 frame 저장소
     private final Map<String, List<byte[]>> sessionChunks = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        Long userId  = (Long) session.getAttributes().get("userId");
+        Long childId = (Long) session.getAttributes().get("childId");
+
+        // 재진입 방지
+        if (session.getAttributes().get("adviceId") == null) {
+            Advice advice = adviceService.startAdviceSession(userId, childId, session.getId());
+            session.getAttributes().put("adviceId", advice.getId());
+        }
+
         sessionChunks.put(session.getId(), new ArrayList<>());
-        log.info("[WS][OPEN] 세션 오픈: id={} uri={}", session.getId(),
-                session.getUri() != null ? session.getUri() : "N/A");
+        log.info("[WS][OPEN] id={} userId={} childId={}", session.getId(), userId, childId);
     }
 
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
-        byte[] payload = message.getPayload().array();
-        List<byte[]> list = sessionChunks.get(session.getId());
-        if (list == null) {
-            log.warn("[WS][BIN] 세션 저장소 없음. 새로 생성: id={}", session.getId());
-            list = new ArrayList<>();
-            sessionChunks.put(session.getId(), list);
-        }
-        list.add(payload);
+        List<byte[]> list = sessionChunks.computeIfAbsent(session.getId(), k -> new ArrayList<>());
+        var buf = message.getPayload().slice();
+        var bytes = new byte[buf.remaining()];
+        buf.get(bytes);
+        list.add(bytes);
         log.debug("[WS][BIN] 바이너리 수신: id={} chunkSize={}B totalChunks={}",
-                session.getId(), payload.length, list.size());
+                session.getId(), bytes.length, list.size());
     }
 
     @Override
@@ -57,6 +70,8 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
         if ("end".equals(msg)) {
             log.info("[WS][END] 업로드 시작: id={}", session.getId());
             String url = saveAndUpload(session.getId());
+            Long adviceId = (Long) session.getAttributes().get("adviceId");
+            adviceService.finishAdviceSession(adviceId, url, COMPLETED);
             if (url != null) {
                 log.info("[WS][END] 업로드 완료: id={} url={}", session.getId(), url);
             } else {
@@ -113,6 +128,10 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        Long adviceId = (Long) session.getAttributes().get("adviceId");
+        if (adviceId != null) {
+            adviceService.finishAdviceSession(adviceId, /*url=*/null, /*status=*/ABORTED);
+        }
         sessionChunks.remove(session.getId());
         log.info("[WS][CLOSE] 세션 종료: id={} code={} reason={}",
                 session.getId(), status.getCode(), status.getReason());

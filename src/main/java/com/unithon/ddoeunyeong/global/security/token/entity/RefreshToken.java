@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.token.entity;
+package com.unithon.ddoeunyeong.global.security.token.entity;
 
 import java.time.Instant;
 
