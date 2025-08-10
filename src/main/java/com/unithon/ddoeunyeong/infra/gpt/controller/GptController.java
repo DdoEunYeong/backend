@@ -1,4 +1,4 @@
-package com.unithon.ddoeunyeong.domain.gpt.controller;
+package com.unithon.ddoeunyeong.infra.gpt.controller;
 
 import java.io.IOException;
 
@@ -40,6 +40,12 @@ public class GptController {
 	@Operation(summary = "음성을 stt로 변경")
 	public BaseResponse<GptResponse> handleAudio(@RequestParam("audio") MultipartFile audioFile,@RequestParam Long childId) throws IOException {
 		return BaseResponse.<GptResponse>builder().isSuccess(true).code(200).message("꼬리질문이 생성되었습니다.").data(gptService.sendToFastApi(audioFile,childId)).build();
+	}
+
+	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "GPT에게 배경 제거를 맡기는 API입니다.\n" +"일단은 사용 X")
+	public BaseResponse<String> makeDoll(@RequestParam("doll") MultipartFile file, @RequestParam Long childId){
+		return gptService.makeDoll(childId,file);
 	}
 
 }

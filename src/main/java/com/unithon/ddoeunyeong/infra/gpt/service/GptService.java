@@ -2,12 +2,15 @@ package com.unithon.ddoeunyeong.domain.gpt.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,8 +37,10 @@ import com.unithon.ddoeunyeong.domain.child.dto.ChildProfile;
 import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.domain.utterance.entity.UserUtterance;
 import com.unithon.ddoeunyeong.domain.utterance.repository.UserUtteranceRepository;
+import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
+import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,7 +57,7 @@ public class GptService {
 	private final UserUtteranceRepository userUtteranceRepository;
 
 	private final ObjectMapper mapper = new ObjectMapper();
-
+	private final S3Service s3Service;
 
 	@Value("${gpt.api-key}")
 	private String API_KEY;
@@ -197,6 +202,126 @@ public class GptService {
 
 		throw new CustomException(ErrorCode.OPENAI_NO_CONTENT);
 	}
+
+	private static final String OPENAI_IMAGE_EDIT_URL = "https://api.openai.com/v1/images/edits";
+
+	public BaseResponse<String> makeDoll(Long childId, MultipartFile file) {
+
+		Child child = childRepository.findById(childId)
+			.orElseThrow(() -> new CustomException(ErrorCode.NO_CHILD));
+
+		// 1) 파일 파트
+		ByteArrayResource filePart = toResource(file);
+
+		HttpHeaders fileHeaders = new HttpHeaders();
+		fileHeaders.setContentType(MediaType.parseMediaType(
+			file.getContentType() != null ? file.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE));
+		// Content-Disposition 명시(파일명 포함)
+		fileHeaders.setContentDisposition(
+			ContentDisposition.builder("form-data")
+				.name("image")
+				.filename(filePart.getFilename())
+				.build()
+		);
+		HttpEntity<ByteArrayResource> imageEntity = new HttpEntity<>(filePart, fileHeaders);
+
+		// 2) 멀티파트 본문
+		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+		body.add("model", "gpt-image-1");
+		body.add("image", imageEntity);
+		body.add("prompt",
+			"Replace the background with complete transparency. " +
+				"Keep only the main subject (person/object) with precise edges. " +
+				"Make the background fully transparent PNG format.");
+		body.add("response_format", "b64_json");
+		body.add("size", "1024x1024");
+
+		// 3) 헤더
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+		headers.setBearerAuth(API_KEY == null ? "" : API_KEY);
+
+		HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
+
+		// 4) 호출 + 에러 처리
+		Map<String, Object> res;
+		try {
+			ResponseEntity<Map> resp =
+				restTemplate.postForEntity(OPENAI_IMAGE_EDIT_URL, req, Map.class);
+
+			res = resp.getBody();
+			if (res == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
+
+			// OpenAI 에러 바디 처리
+			if (res.containsKey("error") && res.get("error") instanceof Map<?, ?> errMap) {
+				Object m = errMap.get("message");
+				String msg = (m instanceof String s) ? s : "OpenAI error";
+				throw new CustomException(ErrorCode.OPENAI_HTTP_ERROR);
+			}
+
+		} catch (org.springframework.web.client.HttpStatusCodeException e) {
+			String bodyStr = e.getResponseBodyAsString();
+			int code = e.getRawStatusCode();
+			throw new CustomException(ErrorCode.OPENAI_HTTP_ERROR);
+		} catch (org.springframework.web.client.ResourceAccessException e) {
+			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
+		}
+
+		// 5) data[0].b64_json 파싱
+		Object dataObj = res.get("data");
+		if (!(dataObj instanceof List<?> list) || list.isEmpty() || !(list.get(0) instanceof Map<?, ?> first)) {
+			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
+		}
+		Object b64Obj = ((Map<?, ?>) first).get("b64_json");
+		if (!(b64Obj instanceof String b64) || b64.isBlank()) {
+			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
+		}
+
+		// 6) base64 → PNG 업로드
+		byte[] bytes;
+		try {
+			bytes = Base64.getDecoder().decode(b64);
+		} catch (IllegalArgumentException e) {
+			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
+		}
+		String finalName = stripExt(file.getOriginalFilename()) + "-bg-removed.png";
+		String url = s3Service.uploadBytes(bytes, "image/png", finalName);
+
+		// 7) 저장
+		child.setDollUrl(url);
+		childRepository.save(child);
+
+		return BaseResponse.<String>builder()
+			.isSuccess(true)
+			.code(200)
+			.message("배경 제거 이미지가 생성되었습니다.")
+			.data(url)
+			.build();
+	}
+
+
+
+	private ByteArrayResource toResource(MultipartFile file) {
+		try {
+			return new ByteArrayResource(file.getBytes()) {
+				@Override public String getFilename() {
+					return file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.png";
+				}
+			};
+		} catch (IOException e) {
+			throw new RuntimeException("파일 읽기 실패", e);
+		}
+	}
+
+	private String stripExt(String name) {
+		if (name == null) return "image";
+		int i = name.lastIndexOf('.');
+		return (i > 0) ? name.substring(0, i) : name;
+	}
+
+
+
+
 
 	/** ```json ... ``` 형태여도 첫 번째 JSON 오브젝트만 추출 */
 	private String extractFirstJsonObject(String content) {
