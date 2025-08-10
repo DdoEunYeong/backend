@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @NoArgsConstructor
@@ -33,8 +34,16 @@ public class Child {
 	//아이의 성별
 	private Gender gender;
 
+	//아이의 이미지
+	@Setter
+	private String imageUrl;
+
 	//아이의 성격
+	@Setter
 	private String characterType;
+
+	@Setter
+	private String dollUrl;
 
 	@ManyToOne
 	@JoinColumn(name = "user_id")

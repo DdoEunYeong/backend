@@ -41,4 +41,10 @@ public class GptController {
 		return BaseResponse.<GptResponse>builder().isSuccess(true).code(200).message("꼬리질문이 생성되었습니다.").data(sttService.sendToFastApiAndAskGpt(audioFile,adviceId)).build();
 	}
 
+	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "GPT에게 배경 제거를 맡기는 API입니다.\n" +"일단은 사용 X")
+	public BaseResponse<String> makeDoll(@RequestParam("doll") MultipartFile file, @RequestParam Long childId){
+		return gptService.makeDoll(childId,file);
+	}
+
 }
