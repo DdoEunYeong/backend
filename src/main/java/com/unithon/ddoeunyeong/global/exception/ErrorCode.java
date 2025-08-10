@@ -14,6 +14,7 @@ public enum ErrorCode {
 
 	NO_CHILD(BAD_REQUEST,413,"존재하지 않는 어린이입니다."),
 	NO_SURVEY(BAD_REQUEST,414,"존재하지 않는 설문입니다."),
+	NO_ADVICE(BAD_REQUEST,404,"존재하지 않는 상담입니다."),
 
 	JSON_SERIALIZE_FAIL(BAD_REQUEST,415,"JSON 파싱 에러"),
 	OPENAI_NO_CONTENT(BAD_REQUEST,416,"잘못된 OPENAI 내용입니다."),
