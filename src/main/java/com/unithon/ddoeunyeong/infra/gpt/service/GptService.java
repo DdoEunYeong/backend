@@ -2,11 +2,13 @@ package com.unithon.ddoeunyeong.domain.gpt.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -34,8 +36,10 @@ import com.unithon.ddoeunyeong.domain.child.dto.ChildProfile;
 import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.domain.utterance.entity.UserUtterance;
 import com.unithon.ddoeunyeong.domain.utterance.repository.UserUtteranceRepository;
+import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
+import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,7 +56,7 @@ public class GptService {
 	private final UserUtteranceRepository userUtteranceRepository;
 
 	private final ObjectMapper mapper = new ObjectMapper();
-
+	private final S3Service s3Service;
 
 	@Value("${gpt.api-key}")
 	private String API_KEY;
@@ -197,6 +201,86 @@ public class GptService {
 
 		throw new CustomException(ErrorCode.OPENAI_NO_CONTENT);
 	}
+
+	private static final String OPENAI_IMAGE_EDIT_URL = "https://api.openai.com/v1/images/edits";
+
+	public BaseResponse<String> makeDoll(Long childId, MultipartFile file) {
+
+		Child child = childRepository.findById(childId)
+			.orElseThrow(()-> new CustomException(ErrorCode.NO_CHILD));
+
+		ByteArrayResource filePart = toResource(file);
+
+		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+		// 파일 파트 (필드명은 반드시 "image")
+		HttpHeaders fileHeaders = new HttpHeaders();
+		fileHeaders.setContentType(MediaType.parseMediaType(
+			file.getContentType() != null ? file.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE));
+		HttpEntity<ByteArrayResource> imageEntity = new HttpEntity<>(filePart, fileHeaders);
+		body.add("image", imageEntity);
+
+		// 편집 지시어(배경 제거)
+		// 투명 배경을 원한다고 명시 + 가장자리 깔끔하게
+		body.add("prompt",
+			"Remove the entire background and make it transparent. " +
+				"Keep only the main subject with clean, sharp edges. Output as PNG.");
+
+		// 응답을 base64로 받기
+		body.add("response_format", "b64_json");
+		// 필요 시 크기 지정 (옵션) : 1024x1024, 512x512 등
+		body.add("size", "1024x1024");
+
+		// 2) 헤더
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+		headers.setBearerAuth(API_KEY);
+
+		HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
+
+		// 3) 호출
+		Map<String, Object> res = restTemplate.postForObject(OPENAI_IMAGE_EDIT_URL, req, Map.class);
+		// OpenAI Images API 응답 구조: { "data": [ { "b64_json": "..." } ] }
+		List<Map<String, String>> data = (List<Map<String, String>>) res.get("data");
+		String b64 = data.get(0).get("b64_json");
+
+		// 4) base64 → byte[] → S3 업로드
+		byte[] bytes = Base64.getDecoder().decode(b64);
+		String url = s3Service.uploadBytes(bytes, "image/png",
+			stripExt(file.getOriginalFilename()) + "-bg-removed.png");
+
+
+		child.setDollUrl(url);
+		childRepository.save(child);
+
+		return BaseResponse.<String>builder()
+			.isSuccess(true).code(200)
+			.message("배경 제거 이미지가 생성되었습니다.")
+			.data(url)
+			.build();
+	}
+
+	private ByteArrayResource toResource(MultipartFile file) {
+		try {
+			return new ByteArrayResource(file.getBytes()) {
+				@Override public String getFilename() {
+					return file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.png";
+				}
+			};
+		} catch (IOException e) {
+			throw new RuntimeException("파일 읽기 실패", e);
+		}
+	}
+
+	private String stripExt(String name) {
+		if (name == null) return "image";
+		int i = name.lastIndexOf('.');
+		return (i > 0) ? name.substring(0, i) : name;
+	}
+
+
+
+
 
 	/** ```json ... ``` 형태여도 첫 번째 JSON 오브젝트만 추출 */
 	private String extractFirstJsonObject(String content) {

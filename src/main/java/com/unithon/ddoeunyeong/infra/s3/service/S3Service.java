@@ -73,6 +73,39 @@ public class S3Service {
 			s3.close();
 		}
 	}
+
+
+	public String uploadBytes(byte[] bytes, String contentType, String originalFilename) {
+		S3Client s3 = S3Client.builder()
+			.region(Region.of(region))
+			.credentialsProvider(StaticCredentialsProvider.create(
+				AwsBasicCredentials.create(accessKey, secretKey)
+			))
+			.build();
+
+		try {
+			String fileName = "uploads/" + UUID.randomUUID() + "_" + originalFilename;
+
+			PutObjectRequest put = PutObjectRequest.builder()
+				.bucket(bucketName)
+				.key(fileName)
+				.contentType(contentType)
+				.cacheControl("public, max-age=31536000")
+				.build();
+
+			s3.putObject(put, software.amazon.awssdk.core.sync.RequestBody.fromBytes(bytes));
+
+
+			String fileUrl = "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + fileName;
+			return fileUrl;
+
+		} catch (S3Exception e) {
+			log.error("S3 upload error", e);
+			throw new CustomException(ErrorCode.UPLOAD_FAIL);
+		} finally {
+			s3.close();
+		}
+	}
 }
 
 
