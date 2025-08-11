@@ -102,7 +102,9 @@ public class ChildService {
 				child.getCharacterType(),
 				adviceCount,
 				lastAdviceDate,
-				child.getBirthDate()
+				child.getBirthDate(),
+				child.getImageUrl(),
+				child.getDollUrl()
 		);
 
 		return BaseResponse.<ChildInfo>builder()
@@ -119,7 +121,7 @@ public class ChildService {
 			.stream().map(m -> {
 				Gender gender = m.getGender();
 				String strGender = gender.equals(Gender.BOY) ? "남자" : "여자";
-				return new ChildLists(m.getId(), m.getName(),m.getAge(),strGender);
+				return new ChildLists(m.getId(), m.getName(),m.getAge(),strGender,m.getImageUrl());
 			})
 			.toList();
 

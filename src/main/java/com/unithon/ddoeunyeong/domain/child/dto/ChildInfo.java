@@ -10,6 +10,8 @@ public record ChildInfo(
         String characteristic,
         int adviceCount,
         LocalDate lastAdviceDate,
-        LocalDate birthday
+        LocalDate birthday,
+        String childImage,
+        String dollImage
         ) {
 }
