@@ -123,6 +123,7 @@ public class ChildService {
 			})
 			.toList();
 
+
 		return BaseResponse.<List<ChildLists>>builder()
 			.code(200)
 			.message("모든 아이들을 조회하였습니다.")
