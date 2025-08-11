@@ -39,6 +39,7 @@ public class ChildController {
 		return childService.deleteChild(childId);
 	}
 
+
 	@GetMapping("")
 	@Operation(summary = "자식 정보 리스트를 제공하는 API 입니다.", description = "부모가 등록한 자식들의 정보를 가져오는 API입니다.")
 	public BaseResponse<List<ChildLists>> getAllChild(@AuthenticationPrincipal CustomUserDetails customUserDetails){
