@@ -6,11 +6,12 @@ import java.util.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
+import com.unithon.ddoeunyeong.domain.advice.service.AdviceService;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
 import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnswer;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalRequest;
-import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalResponse;
+import com.unithon.ddoeunyeong.infra.gptapi.dto.AdivceReportResponse;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +24,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -60,6 +60,7 @@ public class GptService {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final S3Service s3Service;
 
+	private final AdviceService adviceService;
 	private final WebClient openAiClient;
 
 	private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
@@ -240,7 +241,7 @@ public class GptService {
 		}
 	}
 
-	public GptFinalResponse askGptMakeFinalReport(Long adviceId) throws IOException {
+	public AdivceReportResponse askGptMakeFinalReport(Long adviceId) throws IOException {
 
 		Advice advice = adviceRepository.findById(adviceId).orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
 
@@ -351,7 +352,7 @@ public class GptService {
 
 		try {
 
-			GptFinalResponse gpt = mapper.readValue(jsonOnly, GptFinalResponse.class);
+			AdivceReportResponse gpt = mapper.readValue(jsonOnly, AdivceReportResponse.class);
 
 			Long socialScore = gpt.socialReferenceScore() == null ? 20 : Math.max(0, Math.min(100, gpt.socialReferenceScore()));
 			Long coopScore   = gpt.cooperationKindnessScore() == null ? 20 : Math.max(0, Math.min(100, gpt.cooperationKindnessScore()));
@@ -359,8 +360,11 @@ public class GptService {
 			String coreQ    = gpt.coreQuestion() == null ? "" : gpt.coreQuestion();
 			String childAns = gpt.childAnswer() == null ? "" : gpt.childAnswer();
 
+			List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
+			int emotionScore = adviceService.calculateEmotionDiversityScore(utteranceList);
+
 			// 4) Advice 엔티티 업데이트 후 저장
-			advice.updateAnalysisResult(socialScore, coopScore, summary,coreQ,childAns);
+			advice.updateAnalysisResult(socialScore, coopScore, summary,coreQ,childAns, emotionScore);
 
 
 			adviceRepository.save(advice);

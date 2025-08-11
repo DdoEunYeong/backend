@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserUtteranceRepository extends JpaRepository<UserUtterance, Long> {
 
+	List<UserUtterance> findAllByAdviceId(Long adviceId);
 	Optional<UserUtterance> findTopByAdviceIdOrderByCreatedAtDesc(Long adviceId);
 	List<UserUtterance> findTop5ByAdviceIdOrderByCreatedAtDesc(Long adviceId);
 }
