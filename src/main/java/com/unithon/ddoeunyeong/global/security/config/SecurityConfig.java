@@ -56,20 +56,37 @@ public class SecurityConfig {
 					response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
 				})
 			)
-		.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
-		 UsernamePasswordAuthenticationFilter.class);
+			// ✅ 여기 추가: CSP
+			.headers(h -> h
+					.contentSecurityPolicy(csp -> csp.policyDirectives(String.join("; ",
+						"default-src 'self'",
+						// fetch/XHR/WebSocket 허용할 도메인들
+						"connect-src 'self' https://api.v0.dev https://vitals.vercel-insights.com",
+						"script-src 'self'",
+						"img-src 'self' data: https:",
+						"style-src 'self' 'unsafe-inline'",
+						"object-src 'none'",
+						"base-uri 'self'",
+						"frame-ancestors 'self'"
+					)))
+				// 필요 시 Report-Only로 먼저 점검하고 싶다면 아래 한 줄 사용
+				// .contentSecurityPolicy(csp -> csp.policyDirectives("...").reportOnly())
+			)
+			.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+				UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
 
 	@Bean
 	public CorsFilter corsFilter() {
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowCredentials(false);
-		config.setAllowedOrigins(List.of("http://localhost:5500", "*"));
+		config.setAllowedOrigins(List.of("http://localhost:5500")); // 명시 오리진
+		config.setAllowedOriginPatterns(List.of("*"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return new CorsFilter(source);
 	}

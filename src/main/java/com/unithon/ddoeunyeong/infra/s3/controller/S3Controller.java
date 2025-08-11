@@ -21,7 +21,7 @@ public class S3Controller {
 	private final S3Service s3Service;
 
 	@PostMapping(value = "/s3", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "파일 업로드 테스트용 API 입니다.")
+	@Operation(summary = "파일 업로드 테스트용 API 입니다.",description = "파일을 업로드하면 S3에 업로드하고 url을 리턴시켜주는 API입니다.")
 	public BaseResponse<String> uploadFile(@RequestParam MultipartFile multipartFile){
 		return BaseResponse.<String>builder()
 			.code(201)
