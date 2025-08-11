@@ -18,6 +18,7 @@ import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
+import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 
 import lombok.RequiredArgsConstructor;
@@ -30,9 +31,9 @@ public class ChildService {
 	private final UserRepository userRepository;
 	private final S3Service s3Service;
 
-	public BaseResponse<Void> makeChild(ChildRequest request){
+	public BaseResponse<Void> makeChild(CustomUserDetails customUserDetails,ChildRequest request){
 
-		User user = userRepository.findById(request.userId())
+		User user = userRepository.findById(customUserDetails.getUser().getId())
 			.orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
 
 		Child child = Child.builder()
@@ -72,9 +73,9 @@ public class ChildService {
 			.build();
 	}
 
-	public BaseResponse<List<ChildLists>> getAllChild(Long userId){
+	public BaseResponse<List<ChildLists>> getAllChild(CustomUserDetails customUserDetails){
 
-		List<ChildLists> lists = childRepository.findAllByUserId(userId)
+		List<ChildLists> lists = childRepository.findAllByUserId(customUserDetails.getUser().getId())
 			.stream().map(m ->new ChildLists(m.getId(),m.getName()))
 			.toList();
 
