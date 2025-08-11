@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
-import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnser;
+import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnswer;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalRequest;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalResponse;
@@ -60,15 +60,11 @@ public class GptService {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final S3Service s3Service;
 
-	private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-	private static final String OPENAI_IMAGE_EDIT_API_URL = "https://api.openai.com/v1/images/edits";
-
 	private final WebClient openAiClient;
 
-	private static final String API_URL = "https://api.openai.com/v1/chat/completions";
-
+	private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+	private static final String OPENAI_IMAGE_EDIT_API_URL = "https://api.openai.com/v1/images/edits";
 	private static final String CHAT_COMPLETIONS_URI = "/v1/chat/completions";
-	private static final String IMAGE_EDIT_URI = "/v1/images/edits";
 
 	@Value("${gpt.api-key}")
 	private String OPENAI_API_KEY;
@@ -126,11 +122,6 @@ public class GptService {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
 
-		ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_API_URL, request, Map.class);
-
-		List<Map<String, Object>> choices = (List<Map<String, Object>>)response.getBody().get("choices");
-		Map<String, String> message = (Map<String, String>)choices.get(0).get("message");
-		String content = message.get("content");
 		String content = extractContentSafely(responseBody);
 
 		Advice advice = survey.getAdvice();
@@ -145,64 +136,49 @@ public class GptService {
 
 	public ProcessUtteranceResponse askGptAfterSurvey(String userText, Long adviceId) throws IOException {
 		long t0 = System.currentTimeMillis();
-		log.info("[GPT][START] 상담 처리 시작: adviceId={} userTextLen={}", adviceId,
-				(userText == null ? 0 : userText.length()));
 
-		// 3) 사전 정보 조회
-		log.debug("[GPT][CTX] 사전 정보 조회 시작: adviceId={}", adviceId);
+		// 1) 사전 정보 조회
+		// 상담 객체
 		Advice advice = adviceRepository.findById(adviceId)
 				.orElseThrow(() -> {
 					log.error("[GPT][CTX] Advice 조회 실패: adviceId={}", adviceId);
 					return new CustomException(ErrorCode.NO_ADVICE);
 				});
 
+		// 아이 객체
 		Child child = advice.getChild();
+
+		// 아이 프로필 정보
 		ChildProfile childProfile = ChildProfile.builder()
 				.age(child.getAge())
 				.characterType(child.getCharacterType())
 				.name(child.getName())
 				.build();
 
-		// 최근 발화 5개
-		var rawUserUtterances = userUtteranceRepository
-				.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId)
-				.stream().map(UserUtterance::getUtterance).toList();
+		// 최근 질문 및 응답 5개 정보
+		List<QuestionAndAnswer> rawUserUtterances = userUtteranceRepository
+				.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+				.map(u -> new QuestionAndAnswer(u.getQuestion(), u.getUtterance()))
+				.toList();
 
+		// 사전 조사 정보
 		Survey survey = surveyRepository.findByAdviceId(adviceId)
 				.orElseThrow(() -> {
-					log.error("[GPT][CTX] Survey 조회 실패: adviceId={}", adviceId);
 					return new CustomException(ErrorCode.NO_SURVEY);
 				});
-		SurveyDto surveyDto = new SurveyDto(survey.getTemp());
-  
-		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository
-			.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-			.map(u -> new QuestionAndAnser(u.getQuestion(), u.getUtterance()))
-			.toList();
-
-		Survey survey = surveyRepository.findByAdviceId(adviceId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
 		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
 
 		GptRequest gptRequest = new GptRequest(childProfile, rawUserUtterances, surveyDto, userText);
-		log.debug("[GPT][CTX] 사전 정보 준비 완료: adviceId={} uttCnt={}", adviceId, rawUserUtterances.size());
 
 		// 4) 직렬화
 		String userMessageJson;
 		try {
 			userMessageJson = mapper.writeValueAsString(gptRequest);
-			log.debug("[GPT][JSON] 직렬화 성공: adviceId={} jsonLen={}", adviceId, userMessageJson.length());
 		} catch (JsonProcessingException e) {
-			log.error("[GPT][JSON] 직렬화 실패: adviceId={} reason={}", adviceId, e.toString());
 			throw new CustomException(ErrorCode.JSON_SERIALIZE_FAIL);
 		}
 
-		// 5) 헤더
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", OPENAI_API_KEY);
-
-		// 6) system 메시지
+		// 5) system 메시지
 		String systemPrompt = """
         당신은 감정 분석과 꼬리질문을 수행하는 감성 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.
         사용자 정보와 발화 이력, 이전 질문이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
@@ -224,54 +200,27 @@ public class GptService {
 		));
 
 		// 7) OpenAI 호출
-		long tOpenAi = System.currentTimeMillis();
-		log.info("[GPT][OPENAI] 요청 시작: adviceId={}", adviceId);
-		HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-		Map<String, Object> responseBody;
-		try {
-			ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_API_URL, request, Map.class);
-			long tOpenAiResp = System.currentTimeMillis();
-			log.info("[GPT][OPENAI] 응답 수신: adviceId={} status={} elapsedMs={}",
-					adviceId, response.getStatusCodeValue(), (tOpenAiResp - tOpenAi));
-
-			if (!response.getStatusCode().is2xxSuccessful()) {
-				log.error("[GPT][OPENAI] HTTP 오류: adviceId={} status={}", adviceId, response.getStatusCodeValue());
-				throw new CustomException(ErrorCode.OPENAI_HTTP_ERROR);
-			}
-			responseBody = response.getBody();
-			if (responseBody == null) {
-				log.error("[GPT][OPENAI] 빈 응답 바디: adviceId={}", adviceId);
-				throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
-			}
-		} catch (RestClientException e) {
-			log.error("[GPT][OPENAI] 통신 실패: adviceId={} reason={}", adviceId, e.toString());
-			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
-		}
-
-		// 8) JSON 추출
 		Map<String, Object> responseBody;
 		try {
 			responseBody = openAiClient.post()
-				.uri(CHAT_COMPLETIONS_URI)
-				.bodyValue(body)
-				.retrieve()
-				.onStatus(s -> !s.is2xxSuccessful(),
-					resp -> resp.bodyToMono(String.class)
-						.defaultIfEmpty("")
-						.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
-				.bodyToMono(Map.class)
-				.block();
+					.uri(CHAT_COMPLETIONS_URI)
+					.bodyValue(body)
+					.retrieve()
+					.onStatus(s -> !s.is2xxSuccessful(),
+							resp -> resp.bodyToMono(String.class)
+									.defaultIfEmpty("")
+									.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+					.bodyToMono(Map.class)
+					.block();
 
 			if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
 		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
 
+		// 8) JSON 추출
 		String content = extractContentSafely(responseBody);
 		String jsonOnly = extractFirstJsonObject(content);
-		log.debug("[GPT][OPENAI] 콘텐츠 파싱 완료: adviceId={} contentLen={} jsonLen={}",
-				adviceId, (content == null ? 0 : content.length()), (jsonOnly == null ? 0 : jsonOnly.length()));
 
 		// 9) followUpQuestion 저장
 		JsonNode root = mapper.readTree(jsonOnly);
@@ -285,12 +234,8 @@ public class GptService {
 		log.info("[GPT][FOLLOWUP] 질문 저장: adviceId={} questionLen={}", adviceId, (followUpQuestion == null ? 0 : followUpQuestion.length()));
 
 		try {
-			ProcessUtteranceResponse result = mapper.readValue(jsonOnly, ProcessUtteranceResponse.class);
-			long tDone = System.currentTimeMillis();
-			log.info("[GPT][DONE] 처리 완료: adviceId={} totalMs={}", adviceId, (tDone - t0));
-			return result;
+			return mapper.readValue(jsonOnly, ProcessUtteranceResponse.class);
 		} catch (Exception e) {
-			log.error("[GPT][PARSE] 응답 파싱 실패: adviceId={} reason={}", adviceId, e.toString());
 			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
 		}
 	}
@@ -302,18 +247,18 @@ public class GptService {
 		Child child = advice.getChild();
 
 		ChildProfile childProfile = ChildProfile.builder()
-			.age(child.getAge())
-			.characterType(child.getCharacterType())
-			.name(child.getName())
-			.build();
+				.age(child.getAge())
+				.characterType(child.getCharacterType())
+				.name(child.getName())
+				.build();
 
-		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository
-			.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-			.map(u -> new QuestionAndAnser(u.getQuestion(), u.getUtterance()))
-			.toList();
+		List<QuestionAndAnswer> rawUserUtterances = userUtteranceRepository
+				.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+				.map(u -> new QuestionAndAnswer(u.getQuestion(), u.getUtterance()))
+				.toList();
 
 		Survey survey = surveyRepository.findByAdviceId(adviceId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
+				.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
 
 		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
 
@@ -376,24 +321,24 @@ public class GptService {
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
 		body.put("messages", List.of(
-			Map.of("role", "system", "content", systemPrompt),
-			Map.of("role", "user", "content", userMessageJson)
+				Map.of("role", "system", "content", systemPrompt),
+				Map.of("role", "user", "content", userMessageJson)
 		));
 
 		Map<String, Object> responseBody;
 		try {
 			responseBody = openAiClient.post()
-				.uri(CHAT_COMPLETIONS_URI)
-				.bodyValue(body)
-				.retrieve()
-				.onStatus(s -> !s.is2xxSuccessful(),
-					resp -> resp.bodyToMono(String.class)
-						.defaultIfEmpty("")
-						.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
-				.bodyToMono(Map.class)
-				.block();
+					.uri(CHAT_COMPLETIONS_URI)
+					.bodyValue(body)
+					.retrieve()
+					.onStatus(s -> !s.is2xxSuccessful(),
+							resp -> resp.bodyToMono(String.class)
+									.defaultIfEmpty("")
+									.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+					.bodyToMono(Map.class)
+					.block();
 
-		if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
+			if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
 		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
@@ -427,7 +372,7 @@ public class GptService {
 			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
 		}
 	}
-  
+
 	@SuppressWarnings("unchecked")
 	private String extractContentSafely(Map<String, Object> responseBody) {
 		Object choicesObj = responseBody.get("choices");

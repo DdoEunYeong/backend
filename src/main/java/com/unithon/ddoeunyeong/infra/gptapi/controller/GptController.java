@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
-import com.unithon.ddoeunyeong.infra.fastapi.stt.STTService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,14 +13,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalResponse;
-import com.unithon.ddoeunyeong.infra.gptapi.dto.GptResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptTestResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.SttRequest;
 import com.unithon.ddoeunyeong.infra.gptapi.service.GptService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RestController
