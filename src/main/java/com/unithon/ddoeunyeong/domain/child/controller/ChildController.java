@@ -8,10 +8,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.unithon.ddoeunyeong.domain.child.dto.ChildDeleteRequest;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildLists;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildRequest;
-import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
 import com.unithon.ddoeunyeong.domain.child.service.ChildService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
@@ -35,10 +33,10 @@ public class ChildController {
 		return childService.makeChild(customUserDetails,request);
 	}
 
-	@DeleteMapping("")
+	@DeleteMapping("/{childId}")
 	@Operation(summary = "자식을 삭제하는 API 입니다.",description = "부모가 만들어둔 자식을 삭제하는 API입니다.")
-	public BaseResponse<Void> deleteChild(@RequestParam ChildDeleteRequest request){
-		return childService.deleteChild(request);
+	public BaseResponse<Void> deleteChild(@PathVariable Long childId) {
+		return childService.deleteChild(childId);
 	}
 
 	@GetMapping("")

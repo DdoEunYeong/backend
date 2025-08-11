@@ -41,13 +41,14 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(
 					"/ws/**",
-					"/api/auth/**",
-					"/api/v1/**",
+					"/api/v1/user/login",
+					"/api/v1/user/logout",
+					"/api/v1/user/signup",
+					"/api/v1/user/singout",
 					"/v3/api-docs/**",
 					"/swagger-ui/**",
 					"/swagger-ui.html",
-					"/webjars/**",
-					"/api/v1/user/**"
+					"/webjars/**"
 				).permitAll()
 				.anyRequest().authenticated()
 			)

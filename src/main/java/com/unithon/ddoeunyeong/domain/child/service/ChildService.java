@@ -2,16 +2,13 @@ package com.unithon.ddoeunyeong.domain.child.service;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildInfo;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.unithon.ddoeunyeong.domain.child.dto.ChildDeleteRequest;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildLists;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildRequest;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
@@ -62,22 +59,18 @@ public class ChildService {
 	}
 
 
-	public BaseResponse<Void> deleteChild(ChildDeleteRequest request){
-
-
-		User user = userRepository.findById(request.userId()).orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
-
-		Child  child = childRepository.findByIdAndUser(request.childId(),user)
-			.orElseThrow(()-> new CustomException(ErrorCode.NO_CHILD));
+	public BaseResponse<Void> deleteChild(Long childId) {
+		Child child = childRepository.findById(childId)
+				.orElseThrow(()-> new CustomException(ErrorCode.NO_CHILD));
 
 		childRepository.delete(child);
 
 		return BaseResponse.<Void>builder()
-			.isSuccess(true)
-			.data(null)
-			.message("아이를 뺐습니다.")
-			.code(200)
-			.build();
+				.isSuccess(true)
+				.data(null)
+				.message("아이를 뺐습니다.")
+				.code(200)
+				.build();
 	}
 
 	public BaseResponse<ChildInfo> getChildInfo(Long childId) {
