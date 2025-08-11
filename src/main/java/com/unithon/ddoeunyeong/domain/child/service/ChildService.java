@@ -35,7 +35,7 @@ public class ChildService {
 
 	private final AdviceRepository adviceRepository;
 
-	public BaseResponse<Void> makeChild(CustomUserDetails customUserDetails,ChildRequest request){
+	public BaseResponse<Long> makeChild(CustomUserDetails customUserDetails,ChildRequest request){
 
 		User user = userRepository.findById(customUserDetails.getUser().getId())
 			.orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -53,9 +53,9 @@ public class ChildService {
 
 		childRepository.save(child);
 
-		return BaseResponse.<Void>builder()
+		return BaseResponse.<Long>builder()
 			.isSuccess(true)
-			.data(null)
+			.data(child.getId())
 			.message("아이가 추가되었습니다.")
 			.code(201)
 			.build();

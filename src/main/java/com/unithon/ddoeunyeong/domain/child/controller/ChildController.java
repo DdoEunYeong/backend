@@ -29,7 +29,7 @@ public class ChildController {
 
 	@PostMapping("")
 	@Operation(summary = "아이를 추가하는 API 입니다.\n"+"성별은 BOY, GIRL 로 입력하면 됩니다.",description = "user가 부모이기 때문에 부모에게 아이를 추가하기 위해서 사용하는 API입니다.")
-	public BaseResponse<Void> makeChild(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody ChildRequest request){
+	public BaseResponse<Long> makeChild(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody ChildRequest request){
 		return childService.makeChild(customUserDetails,request);
 	}
 
