@@ -115,8 +115,6 @@ public class ChildService {
 
 	public BaseResponse<List<ChildLists>> getAllChild(CustomUserDetails customUserDetails){
 
-
-
 		List<ChildLists> lists = childRepository.findAllByUserId(customUserDetails.getUser().getId())
 			.stream().map(m -> {
 				Gender gender = m.getGender();
