@@ -6,12 +6,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.unithon.ddoeunyeong.domain.user.dto.LoginRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.SignUpRequest;
+import com.unithon.ddoeunyeong.domain.user.dto.UserInfo;
 import com.unithon.ddoeunyeong.domain.user.entity.User;
 import com.unithon.ddoeunyeong.domain.user.entity.UserRole;
 import com.unithon.ddoeunyeong.domain.user.repository.UserRepository;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
+import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
 import com.unithon.ddoeunyeong.global.security.token.dto.TokenResponse;
 import com.unithon.ddoeunyeong.global.security.token.repository.RefreshTokenRepository;
 import com.unithon.ddoeunyeong.global.security.token.service.JwtTokenProvider;
@@ -99,6 +101,21 @@ public class UserService {
 			.code(200)
 			.isSuccess(true)
 			.message("회원 탈퇴가 완료되었습니다.")
+			.build();
+	}
+
+	@Transactional
+	public BaseResponse<UserInfo> getUser(CustomUserDetails customUserDetails){
+		Long userId= customUserDetails.getUser().getId();
+
+		User user = userRepository.findById(userId)
+			.orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
+
+		return BaseResponse.<UserInfo>builder()
+			.isSuccess(true)
+			.message("유저 정보 조회에 성공하였습니다.")
+			.data(new UserInfo(user.getName()))
+			.code(200)
 			.build();
 	}
 
