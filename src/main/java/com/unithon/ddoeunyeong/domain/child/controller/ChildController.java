@@ -51,7 +51,7 @@ public class ChildController {
 		return childService.getChildInfo(childId);
 	}
 
-	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "아이의 사진을 추가하는 API 입니다.",description = "부모가 등록한 자식에게 사진을 추가하는 API입니다.")
 	public BaseResponse<String> postImageChild(@RequestParam("doll")MultipartFile file, Long childId){
 		return childService.postChildImage(file,childId);
