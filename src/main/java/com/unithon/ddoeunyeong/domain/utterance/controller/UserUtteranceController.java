@@ -19,7 +19,7 @@ public class UserUtteranceController {
     private final STTService sttService;
 
     @PostMapping(value = "/stt/last-answer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "stt & 마지막 답변 저장")
+    @Operation(summary = "stt & 마지막 답변 저장",description = "대화를 진행해서 마지막 답변이 되었을 때 저장하는 API입니다.")
     public BaseResponse<LastUtteranceResponse> answerLastQuestion(@RequestParam("audio") MultipartFile audioFile, @RequestParam Long adviceId) throws IOException {
 
         return BaseResponse.<LastUtteranceResponse>builder().isSuccess(true).code(200).message("상담이 종료되었습니다.").data(sttService.sendToFastApiAndSaveLastUtterance(audioFile, adviceId)).build();

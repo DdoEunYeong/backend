@@ -25,7 +25,7 @@ public class GeminiController {
 
 
 	@PostMapping(value = "/edit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "Image edit API")
+	@Operation(summary = "Image edit API",description = "아이의 인형을 등록해서 배경을 제거하고 이미지 URL을 제공하는 API입니다.")
 	public BaseResponse<GeminiResponse> editImage(@RequestParam Long childId, @RequestParam("edit")MultipartFile file){
 		return geminiService.editImage(childId,file);
 	}
