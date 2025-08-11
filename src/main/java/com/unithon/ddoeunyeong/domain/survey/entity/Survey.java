@@ -19,15 +19,22 @@ public class Survey extends BaseTimeEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	private String temp;
+	//오늘 대화를 통해 자녀에게 궁금한 점
+	private String knowAboutChild;
 
-	@Builder
-	private Survey(String temp, Advice advice) {
-		this.temp = temp;
-		this.advice = advice;
-	}
+	//오늘 대화에서 참고할 정보
+	private String knowInfo;
 
 	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "advice_id", unique = true, nullable = false)
 	private Advice advice;
+
+
+	@Builder
+	private Survey(String knowAboutChild, String knowInfo, Advice advice) {
+		this.knowAboutChild = knowAboutChild;
+		this.knowInfo = knowInfo;
+		this.advice = advice;
+	}
+
 }

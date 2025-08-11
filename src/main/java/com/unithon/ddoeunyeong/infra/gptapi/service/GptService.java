@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
+import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnser;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,7 +75,7 @@ public class GptService {
 				.build();
 
 		// 사전 조사 정보
-		SurveyDto surveyDto = new SurveyDto(survey.getTemp());
+		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(),survey.getKnowInfo());
 
 		// 사전 정보 하나에 담아줌
 		FirstGPTRequest firstGPTRequest = new FirstGPTRequest(childProfile,surveyDto);
@@ -94,8 +95,8 @@ public class GptService {
 
 		// 4) system 메시지 설정
 		String systemPrompt = """
-        	당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.
-        	사용자에 대한 정보가 입력되면 이에 대한 첫번째 질문을 생성해주세요.
+        	당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.또한 민감한 주제에 대한 질문은 피해주세요.
+        	사용자에 대한 정보가 입력되면 이를 반영해서 첫번째 질문을 생성해주세요.
     """;
 
 		Map<String, Object> body = new HashMap<>();
@@ -145,14 +146,16 @@ public class GptService {
 			.name(child.getName())
 			.build();
 
-		// 발화 정보 String 처리 하여 사전 정보로 넣어줄 준비
-		List<String> rawUserUtterances = userUtteranceRepository.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-				.map(UserUtterance::getUtterance)
+		// 발화 정보 DTO로 처리 하여 사전 정보로 넣어줄 준비
+		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+				.map(userUtterance -> new QuestionAndAnser(userUtterance.getQuestion(),userUtterance.getUtterance()))
 				.toList();
+
+
 
 		// 사전 조사 정보
 		Survey survey = surveyRepository.findByAdviceId(adviceId).orElseThrow(()->new CustomException(ErrorCode.NO_SURVEY));
-		SurveyDto surveyDto = new SurveyDto(survey.getTemp());
+		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(),survey.getKnowInfo());
 
 		// 사전 정보들 하나의 DTO에 담아줌
 		GptRequest gptRequest = new GptRequest(childProfile, rawUserUtterances, surveyDto, userText);
@@ -173,7 +176,9 @@ public class GptService {
 		// 4) system 메시지 설정
 		String systemPrompt = """
         당신은 감정 분석과 꼬리질문을 수행하는 감성 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.
-        사용자 정보와 발화 이력이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
+        사용자 정보와 발화 이력, 이전 질문이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
+        이때 emotion은 angry, disgust, fear, happy, sad, surprise, neutral 중에 가장 연관될 것을 선택해주세요.
+        또한 이전 질문을 고려하여 반복적인 내용이 반영되는 질문이 나오지 않도록 해주세요.
         {
           "emotion": "...",
           "summary": "...",

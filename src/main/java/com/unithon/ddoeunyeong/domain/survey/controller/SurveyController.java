@@ -20,7 +20,7 @@ public class SurveyController {
 
 	private final SurveyService surveyService;
 
-	@Operation(summary = "설문지 추가 및 첫질문 제공 API입니다.")
+	@Operation(summary = "설문지 추가 및 첫질문 제공 API입니다."+"knowAboutChild는 오늘 대화를 통해 자녀에게 궁금한 점\n" + "knowInfo는 오늘 대화에서 참고할 정보\n")
 	@PostMapping("/survey")
 	public BaseResponse<SurveyResponse> createSurvey(@RequestBody SurveyRequest request){
 		return surveyService.createSurvey(request);
