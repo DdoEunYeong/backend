@@ -44,6 +44,7 @@ import com.unithon.ddoeunyeong.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
@@ -58,29 +59,27 @@ public class GptService {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final S3Service s3Service;
 
+	private final WebClient openAiClient;
+
 	private static final String API_URL = "https://api.openai.com/v1/chat/completions";
+
+	private static final String CHAT_COMPLETIONS_URI = "/v1/chat/completions";
+	private static final String IMAGE_EDIT_URI = "/v1/images/edits";
 
 	@Value("${gpt.api-key}")
 	private String API_KEY;
 
 	public String makeFirstQuestionWithSurvey(Survey survey){
-
-		// 1) GPT에게 넘길 사전 정보
-		// child 사전 정보
 		Child child = survey.getAdvice().getChild();
 		ChildProfile childProfile = ChildProfile.builder()
-				.name(child.getName())
-				.age(child.getAge())
-				.characterType(child.getCharacterType())
-				.build();
+			.name(child.getName())
+			.age(child.getAge())
+			.characterType(child.getCharacterType())
+			.build();
 
-		// 사전 조사 정보
-		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(),survey.getKnowInfo());
+		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
+		FirstGPTRequest firstGPTRequest = new FirstGPTRequest(childProfile, surveyDto);
 
-		// 사전 정보 하나에 담아줌
-		FirstGPTRequest firstGPTRequest = new FirstGPTRequest(childProfile,surveyDto);
-
-		// 2) 직렬화 및 예외처리
 		String userMessageJson;
 		try {
 			userMessageJson = mapper.writeValueAsString(firstGPTRequest);
@@ -88,57 +87,53 @@ public class GptService {
 			throw new CustomException(ErrorCode.JSON_SERIALIZE_FAIL);
 		}
 
-		// 3) 헤더 세팅
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", API_KEY);
-
-		// 4) system 메시지 설정
 		String systemPrompt = """
-        	당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.또한 민감한 주제에 대한 질문은 피해주세요.
-        	사용자에 대한 정보가 입력되면 이를 반영해서 첫번째 질문을 생성해주세요.
+        당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.또한 민감한 주제에 대한 질문은 피해주세요.
+        사용자에 대한 정보가 입력되면 이를 반영해서 첫번째 질문을 생성해주세요.
     """;
 
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
 		body.put("messages", List.of(
-				Map.of("role", "system", "content", systemPrompt),
-				Map.of("role", "user", "content", userMessageJson)
+			Map.of("role", "system", "content", systemPrompt),
+			Map.of("role", "user", "content", userMessageJson)
 		));
 
-		// 5) GPT 통신
-		HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 		Map<String, Object> responseBody;
+		try {
+			responseBody = openAiClient.post()
+				.uri(CHAT_COMPLETIONS_URI)
+				.bodyValue(body)
+				.retrieve()
+				.onStatus(s -> !s.is2xxSuccessful(),
+					resp -> resp.bodyToMono(String.class)
+						.defaultIfEmpty("")
+						.map(e -> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+				.bodyToMono(Map.class)
+				.block();
+		} catch (Exception e) {
+			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
+		}
 
-		ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, request, Map.class);
+		String content = extractContentSafely(responseBody);
 
-		List<Map<String, Object>> choices = (List<Map<String, Object>>)response.getBody().get("choices");
-		Map<String, String> message = (Map<String, String>)choices.get(0).get("message");
-		String content = message.get("content");
-
-		// 6) 생성된 질문 미리 UserUtterance에 저장해둠
 		Advice advice = survey.getAdvice();
 		UserUtterance newUserUtter = UserUtterance.builder()
-				.advice(advice)
-				.question(content.trim())
-				.build();
+			.advice(advice)
+			.question(content.trim())
+			.build();
 		userUtteranceRepository.save(newUserUtter);
 
 		return content.trim();
 	}
 
 	public GptResponse askGptAfterSurvey(String userText, Long adviceId) throws IOException {
-
-		// *현재 발화를 이전의 UserUtterance에 담아서 저장*
 		UserUtterance priorUserUtterance = userUtteranceRepository.findTopByAdviceIdOrderByCreatedAtDesc(adviceId)
-				.orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+			.orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
 		priorUserUtterance.updateUtterance(userText);
 
-		// 1) GPT에게 넘길 사전 정보
-		Advice advice = adviceRepository.findById(adviceId)
-			.orElseThrow(null);
+		Advice advice = adviceRepository.findById(adviceId).orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
 
-		// Child의 정보
 		Child child = advice.getChild();
 		ChildProfile childProfile = ChildProfile.builder()
 			.age(child.getAge())
@@ -146,21 +141,17 @@ public class GptService {
 			.name(child.getName())
 			.build();
 
-		// 발화 정보 DTO로 처리 하여 사전 정보로 넣어줄 준비
-		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-				.map(userUtterance -> new QuestionAndAnser(userUtterance.getQuestion(),userUtterance.getUtterance()))
-				.toList();
+		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository
+			.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+			.map(u -> new QuestionAndAnser(u.getQuestion(), u.getUtterance()))
+			.toList();
 
+		Survey survey = surveyRepository.findByAdviceId(adviceId)
+			.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
+		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
 
-
-		// 사전 조사 정보
-		Survey survey = surveyRepository.findByAdviceId(adviceId).orElseThrow(()->new CustomException(ErrorCode.NO_SURVEY));
-		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(),survey.getKnowInfo());
-
-		// 사전 정보들 하나의 DTO에 담아줌
 		GptRequest gptRequest = new GptRequest(childProfile, rawUserUtterances, surveyDto, userText);
 
-		// 2) 사전 정보 직렬화 및 예외 처리
 		String userMessageJson;
 		try {
 			userMessageJson = mapper.writeValueAsString(gptRequest);
@@ -168,12 +159,6 @@ public class GptService {
 			throw new CustomException(ErrorCode.JSON_SERIALIZE_FAIL);
 		}
 
-		// 3) 헤더 세팅
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", API_KEY);
-
-		// 4) system 메시지 설정
 		String systemPrompt = """
         당신은 감정 분석과 꼬리질문을 수행하는 감성 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.
         사용자 정보와 발화 이력, 이전 질문이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
@@ -193,35 +178,34 @@ public class GptService {
 			Map.of("role", "user", "content", userMessageJson)
 		));
 
-		// 5) GPT 통신
-		HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 		Map<String, Object> responseBody;
 		try {
-			ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, request, Map.class);
-			if (!response.getStatusCode().is2xxSuccessful()) {
-				throw new CustomException(ErrorCode.OPENAI_HTTP_ERROR);
-			}
-			responseBody = response.getBody();
-			if (responseBody == null) {
-				throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
-			}
-		} catch (RestClientException e) {
+			responseBody = openAiClient.post()
+				.uri(CHAT_COMPLETIONS_URI)
+				.bodyValue(body)
+				.retrieve()
+				.onStatus(s -> !s.is2xxSuccessful(),
+					resp -> resp.bodyToMono(String.class)
+						.defaultIfEmpty("")
+						.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+				.bodyToMono(Map.class)
+				.block();
+
+			if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
+		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
 
-		// 6) 안전 파싱 (choices[0].message.content) + JSON만 추출
 		String content = extractContentSafely(responseBody);
 		String jsonOnly = extractFirstJsonObject(content);
 
-		// 7) 생성된 질문 미리 UserUtterance에 저장해둠
 		JsonNode root = mapper.readTree(jsonOnly);
-
-		// 값이 없거나 타입이 다르면 빈 문자열 반환
 		String followUpQuestion = root.path("followUpQuestion").asText("");
+
 		UserUtterance newUserUtter = UserUtterance.builder()
-				.advice(advice)
-				.question(followUpQuestion)
-				.build();
+			.advice(advice)
+			.question(followUpQuestion)
+			.build();
 		userUtteranceRepository.save(newUserUtter);
 
 		try {
