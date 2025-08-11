@@ -3,6 +3,8 @@ package com.unithon.ddoeunyeong.domain.advice.entity;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.domain.survey.entity.Survey;
 import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
+
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,6 +36,22 @@ public class Advice extends BaseTimeEntity {
     // video S3 url
     private String videoUrl;
 
+    @Setter
+    private Long socialScore;
+
+    @Setter
+    private Long coopScore;
+
+    @Setter
+    private String summary;
+
+    @Setter
+    private String coreQ;
+
+    @Setter
+    private String childAns;
+
+
     // 대표 감정 값을 통해 감정
     @Enumerated(EnumType.STRING)
     private Emotion emotionAvg;
@@ -52,5 +70,14 @@ public class Advice extends BaseTimeEntity {
 
     public void updateSessionId (String sessionId) {
         this.sessionId = sessionId;
+    }
+
+
+    public void updateAnalysisResult(Long socialScore, Long coopScore, String summary, String coreQ, String childAns){
+        this.socialScore = socialScore;
+        this.coopScore = coopScore;
+        this.summary = summary;
+        this.coreQ = coreQ;
+        this.childAns = childAns;
     }
 }
