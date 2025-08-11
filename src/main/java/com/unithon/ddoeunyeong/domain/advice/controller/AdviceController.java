@@ -16,7 +16,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class AdviceController {
 
-    GptService gptService;
+    private final GptService gptService;
 
     @GetMapping("/advice/{adviceId}/report")
     @Operation(summary = "마지막 상담 결과를 생성하는 API입니다.", description = "상담이 끝나면 해당 API를 호출해서 마지막 결과를 출력해주세요.")
