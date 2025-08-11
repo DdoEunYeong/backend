@@ -36,7 +36,7 @@ public class GptController {
 	}
 
 	@PostMapping(value = "/stt/answer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "음성을 stt로 변경")
+	@Operation(summary = "음성을 stt로 변경",description = "아이가 첫 설문지를 생성하고 나서 상담을 진행할 때 사용하는 API입니다. 아이가 말을 한 것에 대한 음성 파일을 입력받아서 해당 음성파일을 STT로 변경하고, 꼬리질문과 감정등의 결과값을 생성하는 API입니다.")
 	public BaseResponse<GptResponse> handleAudio(@RequestParam("audio") MultipartFile audioFile,@RequestParam Long adviceId) throws IOException {
 		return BaseResponse.<GptResponse>builder().isSuccess(true).code(200).message("꼬리질문이 생성되었습니다.").data(sttService.sendToFastApiAndAskGpt(audioFile,adviceId)).build();
 	}

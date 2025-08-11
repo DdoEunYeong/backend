@@ -35,25 +35,25 @@ public class ChildController {
 
 
 	@PostMapping("")
-	@Operation(summary = "아이를 추가하는 API 입니다.\n"+"성별은 BOY, GIRL 로 입력하면 됩니다.")
+	@Operation(summary = "아이를 추가하는 API 입니다.\n"+"성별은 BOY, GIRL 로 입력하면 됩니다.",description = "user가 부모이기 때문에 부모에게 아이를 추가하기 위해서 사용하는 API입니다.")
 	public BaseResponse<Void> makeChild(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody ChildRequest request){
 		return childService.makeChild(customUserDetails,request);
 	}
 
 	@DeleteMapping("")
-	@Operation(summary = "자식을 삭제하는 API 입니다.")
+	@Operation(summary = "자식을 삭제하는 API 입니다.",description = "부모가 만들어둔 자식을 삭제하는 API입니다.")
 	public BaseResponse<Void> deleteChild(@RequestParam ChildDeleteRequest request){
 		return childService.deleteChild(request);
 	}
 
 	@GetMapping("")
-	@Operation(summary = "자식 정보를 제공하는 API 입니다.")
+	@Operation(summary = "자식 정보를 제공하는 API 입니다.", description = "부모가 등록한 자식들의 정보를 가져오는 API입니다.")
 	public BaseResponse<List<ChildLists>> getAllChild(@AuthenticationPrincipal CustomUserDetails customUserDetails){
 		return childService.getAllChild(customUserDetails);
 	}
 
 	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	@Operation(summary = "아이의 사진을 추가하는 API 입니다.")
+	@Operation(summary = "아이의 사진을 추가하는 API 입니다.",description = "부모가 등록한 자식에게 사진을 추가하는 API입니다.")
 	public BaseResponse<String> postImageChild(@RequestParam("doll")MultipartFile file, Long childId){
 		return childService.postChildImage(file,childId);
 	}
