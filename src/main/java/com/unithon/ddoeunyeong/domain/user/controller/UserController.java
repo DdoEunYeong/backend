@@ -1,6 +1,8 @@
 package com.unithon.ddoeunyeong.domain.user.controller;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -10,8 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.unithon.ddoeunyeong.domain.user.dto.LoginRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.SignUpRequest;
+import com.unithon.ddoeunyeong.domain.user.dto.UserInfo;
 import com.unithon.ddoeunyeong.domain.user.service.UserService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
+import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
 import com.unithon.ddoeunyeong.global.security.token.dto.TokenResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +53,12 @@ public class UserController {
 	@PostMapping("/login")
 	public BaseResponse<TokenResponse> login(@RequestBody LoginRequest loginRequest){
 		return userService.login(loginRequest);
+	}
+
+	@GetMapping("/userInfo")
+	@Operation(summary = "회원정보 제공 API")
+	public BaseResponse<UserInfo> getUserInfo(@AuthenticationPrincipal CustomUserDetails customUserDetails){
+		return userService.getUser(customUserDetails);
 	}
 
 
