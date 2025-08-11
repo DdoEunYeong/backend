@@ -2,15 +2,10 @@ package com.unithon.ddoeunyeong.domain.child.controller;
 
 import java.util.List;
 
+import com.unithon.ddoeunyeong.domain.child.dto.ChildInfo;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.unithon.ddoeunyeong.domain.child.dto.ChildDeleteRequest;
@@ -47,9 +42,15 @@ public class ChildController {
 	}
 
 	@GetMapping("")
-	@Operation(summary = "자식 정보를 제공하는 API 입니다.", description = "부모가 등록한 자식들의 정보를 가져오는 API입니다.")
+	@Operation(summary = "자식 정보 리스트를 제공하는 API 입니다.", description = "부모가 등록한 자식들의 정보를 가져오는 API입니다.")
 	public BaseResponse<List<ChildLists>> getAllChild(@AuthenticationPrincipal CustomUserDetails customUserDetails){
 		return childService.getAllChild(customUserDetails);
+	}
+
+	@GetMapping("/{childId}")
+	@Operation(summary = "자식 정보를 제공하는 API 입니다.", description = "부모가 등록한 자식의 정보를 가져오는 API입니다.")
+	public BaseResponse<ChildInfo> getAllChild(@PathVariable Long childId){
+		return childService.getChildInfo(childId);
 	}
 
 	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

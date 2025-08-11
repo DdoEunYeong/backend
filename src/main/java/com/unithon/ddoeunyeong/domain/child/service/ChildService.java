@@ -1,8 +1,12 @@
 package com.unithon.ddoeunyeong.domain.child.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
+import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
+import com.unithon.ddoeunyeong.domain.child.dto.ChildInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +35,8 @@ public class ChildService {
 	private final UserRepository userRepository;
 	private final S3Service s3Service;
 
+	private final AdviceRepository adviceRepository;
+
 	public BaseResponse<Void> makeChild(CustomUserDetails customUserDetails,ChildRequest request){
 
 		User user = userRepository.findById(customUserDetails.getUser().getId())
@@ -38,6 +44,7 @@ public class ChildService {
 
 		Child child = Child.builder()
 			.age(request.age())
+			.birthDate(request.birthDate())
 			.character(request.character())
 			.gender(Gender.valueOf(request.gender()))
 			.name(request.name())
@@ -71,6 +78,43 @@ public class ChildService {
 			.message("아이를 뺐습니다.")
 			.code(200)
 			.build();
+	}
+
+	public BaseResponse<ChildInfo> getChildInfo(Long childId) {
+		Child child = childRepository.findById(childId).orElseThrow(()->new CustomException(ErrorCode.NO_CHILD));
+
+		Gender gender = child.getGender();
+		String strGender = gender.equals(Gender.BOY) ? "남자" : "여자";
+
+		int adviceCount = (int) adviceRepository.countByChildId(childId);
+
+		Advice lastAdvice = adviceRepository.findTopByChildIdOrderByCreatedAtDesc(childId).orElse(null);
+
+		LocalDate lastAdviceDate;
+
+		if (lastAdvice != null){
+			lastAdviceDate = lastAdvice.getCreatedAt().toLocalDate();
+		} else {
+			lastAdviceDate = null;
+		}
+
+		ChildInfo childInfo	= new ChildInfo(
+				child.getId(),
+				child.getName(),
+				strGender,
+				child.getAge(),
+				child.getCharacterType(),
+				adviceCount,
+				lastAdviceDate,
+				child.getBirthDate()
+		);
+
+		return BaseResponse.<ChildInfo>builder()
+				.isSuccess(true)
+				.data(childInfo)
+				.message("아이의 정보입니다.")
+				.code(200)
+				.build();
 	}
 
 	public BaseResponse<List<ChildLists>> getAllChild(CustomUserDetails customUserDetails){

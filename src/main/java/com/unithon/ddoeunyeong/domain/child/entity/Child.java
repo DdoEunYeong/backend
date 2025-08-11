@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @NoArgsConstructor
 @Getter
@@ -30,6 +32,9 @@ public class Child {
 
 	//아이의 나이
 	private Long age;
+
+	//아이의 생일
+	private LocalDate birthDate;
 
 	//아이의 성별
 	private Gender gender;
@@ -50,9 +55,10 @@ public class Child {
 	private User user;
 
 	@Builder
-	private Child(String name, Long age, User user, Gender gender, String character){
+	private Child(String name, Long age, LocalDate birthDate, User user, Gender gender, String character){
 		this.name = name;
 		this.age = age;
+		this.birthDate = birthDate;
 		this.gender = gender;
 		this.user = user;
 		this.characterType = character;
