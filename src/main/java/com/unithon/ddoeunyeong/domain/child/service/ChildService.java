@@ -1,6 +1,7 @@
 package com.unithon.ddoeunyeong.domain.child.service;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
@@ -39,8 +40,10 @@ public class ChildService {
 		User user = userRepository.findById(customUserDetails.getUser().getId())
 			.orElseThrow(()->new CustomException(ErrorCode.USER_NOT_FOUND));
 
+		Long childAge = (long) Period.between(request.birthDate(), LocalDate.now()).getYears();
+
 		Child child = Child.builder()
-			.age(request.age())
+			.age(childAge)
 			.birthDate(request.birthDate())
 			.character(request.character())
 			.gender(Gender.valueOf(request.gender()))
