@@ -97,7 +97,7 @@ public class GptService {
 		String systemPrompt = """
         당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.또한 민감한 주제에 대한 질문은 피해주세요.
 		또한 제공하는 값중에서 knowAboutChild는 오늘 답변을 듣기 궁금한 질문입니다. 그리고 getKnowInfo는 오늘 대화에서 참조해줬으면 좋겠는 사항입니다.
-        사용자에 대한 정보가 입력되면 이를 반영해서 첫번째 질문을 생성해주세요.
+		그리고 질문 형태는 하나로만 나오게끔 해주세요. 사용자에 대한 정보가 입력되면 이를 반영해서 첫번째 질문을 생성해주세요.
     """;
 
 		Map<String, Object> body = new HashMap<>();
@@ -185,7 +185,7 @@ public class GptService {
         사용자 정보와 발화 이력, 이전 질문이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
         이때 emotion은 angry, disgust, fear, happy, sad, surprise, neutral 중에 가장 연관될 것을 선택해주세요.
 		또한 제공하는 값중에서 knowAboutChild는 오늘 답변을 듣기 궁금한 질문입니다. 그리고 getKnowInfo는 오늘 대화에서 참조해줬으면 좋겠는 사항입니다.
-        또한 이전 질문을 고려하여 반복적인 내용이 반영되는 질문이 나오지 않도록 해주세요.
+        또한 이전 질문을 고려하여 반복적인 내용이 반영되는 질문이 나오지 않도록 해주세요. 그리고 질문 형태는 하나로만 나오게끔 해주세요.
         {
           "emotion": "...",
           "summary": "...",
