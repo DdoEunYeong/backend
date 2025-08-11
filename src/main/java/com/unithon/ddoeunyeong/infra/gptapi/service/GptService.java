@@ -362,7 +362,7 @@ public class GptService {
 
 			List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
 			int emotionScore = adviceService.calculateEmotionDiversityScore(utteranceList);
-
+			
 			// 4) Advice 엔티티 업데이트 후 저장
 			advice.updateAnalysisResult(socialScore, coopScore, summary,coreQ,childAns, emotionScore);
 
