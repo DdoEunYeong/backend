@@ -1,5 +1,6 @@
 package com.unithon.ddoeunyeong.domain.utterance.entity;
 
+import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 
@@ -24,9 +25,8 @@ public class UserUtterance extends BaseTimeEntity {
 	private Long id;
 
 	@ManyToOne
-	@JoinColumn(name = "child_id")
-	private Child child;
-
+	@JoinColumn(name = "advice_id")
+	private Advice advice;
 
 	@Setter
 	private String question;
@@ -34,13 +34,14 @@ public class UserUtterance extends BaseTimeEntity {
 	@Setter
 	private String utterance;
 
-
 	@Builder
-	private UserUtterance(String utterance,Child child){
-		this.utterance = utterance;
-		this.child = child;
+	private UserUtterance(Advice advice, String question){
+		this.advice = advice;
+		this.question = question;
 	}
 
-
+	public void updateUtterance(String utterance){
+		this.utterance = utterance;
+	}
 
 }

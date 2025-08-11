@@ -1,9 +1,7 @@
-package com.unithon.ddoeunyeong.domain.gpt.dto;
+package com.unithon.ddoeunyeong.infra.gptapi.dto;
 
-import java.util.List;
-
-import com.unithon.ddoeunyeong.domain.survey.dto.SurveyDto;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildProfile;
+import com.unithon.ddoeunyeong.domain.survey.dto.SurveyDto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,9 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class GptRequest {
+public class FirstGPTRequest {
 	private ChildProfile childProfile;
-	private List<String> history;
 	private SurveyDto survey;
-	private String latestInput;
 }

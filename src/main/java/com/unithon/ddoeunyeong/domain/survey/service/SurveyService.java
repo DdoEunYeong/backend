@@ -1,11 +1,14 @@
 package com.unithon.ddoeunyeong.domain.survey.service;
 
+import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
+import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
+import com.unithon.ddoeunyeong.domain.advice.service.AdviceService;
+import com.unithon.ddoeunyeong.domain.survey.dto.SurveyResponse;
 import org.springframework.stereotype.Service;
 
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
-import com.unithon.ddoeunyeong.domain.gpt.dto.FirstGptResponse;
-import com.unithon.ddoeunyeong.domain.gpt.service.GptService;
+import com.unithon.ddoeunyeong.infra.gptapi.service.GptService;
 import com.unithon.ddoeunyeong.domain.survey.dto.SurveyRequest;
 import com.unithon.ddoeunyeong.domain.survey.entity.Survey;
 import com.unithon.ddoeunyeong.domain.survey.repository.SurveyRepository;
@@ -22,25 +25,33 @@ public class SurveyService {
 	private final SurveyRepository surveyRepository;
 	private final ChildRepository childRepository;
 	private final GptService gptService;
+	private final AdviceService adviceService;
+	private final AdviceRepository adviceRepository;
 
-	public BaseResponse<FirstGptResponse> createSurvey(SurveyRequest request){
+	public BaseResponse<SurveyResponse> createSurvey(SurveyRequest request){
 
 		Child child = childRepository.findById(request.childId())
 			.orElseThrow(()-> new CustomException(ErrorCode.NO_CHILD));
 
+		// Advice 생성
+		Advice advice = adviceService.createAdviceBeforeSurvey(child.getId());
+
+		// Survey 생성, Advice 함께 저장
 		Survey survey = Survey.builder()
 			.temp(request.temp())
-			.child(child).build();
+			.advice(advice)
+			.build();
 
+		// Survey 저장
 		surveyRepository.save(survey);
 
-		String firstQuestion = gptService.makeFirstQuestion(survey);
+		// GPT에게 첫 질문 생성 요청
+		String firstQuestion = gptService.makeFirstQuestionWithSurvey(survey);
 
-
-		return BaseResponse.<FirstGptResponse>builder()
+		return BaseResponse.<SurveyResponse>builder()
 			.code(201)
 			.message("설문지를 작성하였습니다.")
-			.data(new FirstGptResponse(firstQuestion))
+			.data(new SurveyResponse(firstQuestion, advice.getId()))
 			.isSuccess(true)
 			.build();
 	}

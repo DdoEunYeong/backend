@@ -21,8 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus.ABORTED;
-import static com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus.COMPLETED;
+import static com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus.*;
 
 
 @Slf4j
@@ -39,17 +38,16 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        Long userId  = (Long) session.getAttributes().get("userId");
-        Long childId = (Long) session.getAttributes().get("childId");
+        Long adviceId = (Long) session.getAttributes().get("adviceId");
 
         // 재진입 방지
         if (session.getAttributes().get("adviceId") == null) {
-            Advice advice = adviceService.startAdviceSession(userId, childId, session.getId());
+            Advice advice = adviceService.startAdviceSession(adviceId, session.getId());
             session.getAttributes().put("adviceId", advice.getId());
         }
 
         sessionChunks.put(session.getId(), new ArrayList<>());
-        log.info("[WS][OPEN] id={} userId={} childId={}", session.getId(), userId, childId);
+        log.info("[WS][OPEN] id={}", session.getId());
     }
 
     @Override
@@ -71,7 +69,7 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
             log.info("[WS][END] 업로드 시작: id={}", session.getId());
             String url = saveAndUpload(session.getId());
             Long adviceId = (Long) session.getAttributes().get("adviceId");
-            adviceService.finishAdviceSession(adviceId, url, COMPLETED);
+            adviceService.finishAdviceSession(adviceId, url, UPLOAD_SUCCESSED);
             if (url != null) {
                 log.info("[WS][END] 업로드 완료: id={} url={}", session.getId(), url);
             } else {
@@ -130,7 +128,7 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         Long adviceId = (Long) session.getAttributes().get("adviceId");
         if (adviceId != null) {
-            adviceService.finishAdviceSession(adviceId, /*url=*/null, /*status=*/ABORTED);
+            adviceService.finishAdviceSession(adviceId, /*url=*/null, /*status=*/COMPLETED);
         }
         sessionChunks.remove(session.getId());
         log.info("[WS][CLOSE] 세션 종료: id={} code={} reason={}",

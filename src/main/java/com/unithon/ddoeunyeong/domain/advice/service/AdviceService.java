@@ -9,7 +9,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -18,13 +17,20 @@ public class AdviceService {
     private final ChildRepository childRepository;
 
     @Transactional
-    public Advice startAdviceSession(Long userId, Long childId, String sessionId) {
+    public Advice createAdviceBeforeSurvey(Long childId) {
         Child child = childRepository.findById(childId).orElse(null);
         Advice advice = Advice.builder()
                 .child(child)
-                .sessionId(sessionId)
-                .status(AdviceStatus.IN_PROGRESS)
+                .status(AdviceStatus.PENDING)
                 .build();
+        return adviceRepository.save(advice);
+    }
+
+    @Transactional
+    public Advice startAdviceSession(Long adviceId, String sessionId) {
+        Advice advice = adviceRepository.findById(adviceId).orElse(null);
+        advice.updateSessionId(sessionId);
+        advice.updateStatus(AdviceStatus.IN_PROGRESS);
         return adviceRepository.save(advice);
     }
 

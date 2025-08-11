@@ -1,14 +1,10 @@
 package com.unithon.ddoeunyeong.domain.survey.entity;
 
+import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -23,17 +19,15 @@ public class Survey extends BaseTimeEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-
-	@ManyToOne
-	@JoinColumn(name = "child_id")
-	private Child child;
-
 	private String temp;
 
 	@Builder
-	private Survey(String temp,Child child){
+	private Survey(String temp, Advice advice) {
 		this.temp = temp;
-		this.child = child;
+		this.advice = advice;
 	}
 
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "advice_id", unique = true, nullable = false)
+	private Advice advice;
 }

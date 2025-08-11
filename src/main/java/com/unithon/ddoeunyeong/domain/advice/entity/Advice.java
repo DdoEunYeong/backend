@@ -1,6 +1,7 @@
 package com.unithon.ddoeunyeong.domain.advice.entity;
 
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
+import com.unithon.ddoeunyeong.domain.survey.entity.Survey;
 import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,10 +15,15 @@ import lombok.*;
 public class Advice extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="advice_id")
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "child_id")
+//    @OneToOne
+//    @JoinColumn(name = "survey_id", unique = true, nullable = false)
+//    private Survey survey;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "child_id", nullable = false)
     private Child child;
 
     private String sessionId;
@@ -42,5 +48,9 @@ public class Advice extends BaseTimeEntity {
 
     public void updateStatus (AdviceStatus status) {
         this.status = status;
+    }
+
+    public void updateSessionId (String sessionId) {
+        this.sessionId = sessionId;
     }
 }

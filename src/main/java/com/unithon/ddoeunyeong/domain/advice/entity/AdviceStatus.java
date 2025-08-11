@@ -14,15 +14,15 @@ public enum AdviceStatus {
     IN_PROGRESS,
 
     /**
-     * 상담이 정상적으로 종료됨
+     * 상담 영상이 정상적으로 저장됨
      */
-    COMPLETED,
+    UPLOAD_SUCCESSED,
 
     /**
-     * 상담이 비정상 종료됨
-     * (예: 네트워크 끊김, 클라이언트 강제 종료)
+     * 상담이 정상 종료됨
+     * (예: 소켓 종료 및 세션 종료)
      */
-    ABORTED,
+    COMPLETED,
 
     /**
      * 상담이 서버/사용자에 의해 취소됨

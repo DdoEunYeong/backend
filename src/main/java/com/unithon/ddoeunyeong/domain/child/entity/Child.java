@@ -19,12 +19,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Table(name = "child")
-@Getter
 public class Child {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "child_id")
 	private Long id;
 
 	//아이의 이름
