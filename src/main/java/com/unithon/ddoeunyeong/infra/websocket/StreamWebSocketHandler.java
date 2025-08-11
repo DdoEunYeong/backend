@@ -1,7 +1,6 @@
 package com.unithon.ddoeunyeong.infra.websocket;
 
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
-import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
 import com.unithon.ddoeunyeong.domain.advice.service.AdviceService;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
@@ -57,8 +56,8 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
         var bytes = new byte[buf.remaining()];
         buf.get(bytes);
         list.add(bytes);
-        log.debug("[WS][BIN] 바이너리 수신: id={} chunkSize={}B totalChunks={}",
-                session.getId(), bytes.length, list.size());
+        //log.debug("[WS][BIN] 바이너리 수신: id={} chunkSize={}B totalChunks={}",
+        //        session.getId(), bytes.length, list.size());
     }
 
     @Override
@@ -133,18 +132,6 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
         sessionChunks.remove(session.getId());
         log.info("[WS][CLOSE] 세션 종료: id={} code={} reason={}",
                 session.getId(), status.getCode(), status.getReason());
-    }
-
-    public byte[] getLatestFrame(String sessionId) {
-        List<byte[]> chunks = sessionChunks.get(sessionId);
-        if (chunks == null || chunks.isEmpty()) {
-            log.debug("[WS][FRAME] 프레임 없음: id={}", sessionId);
-            return null;
-        }
-        byte[] last = chunks.get(chunks.size() - 1);
-        log.debug("[WS][FRAME] 마지막 프레임 조회: id={} size={}B index={}",
-                sessionId, last.length, chunks.size() - 1);
-        return last; // 마지막 프레임만 리턴
     }
 }
 

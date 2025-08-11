@@ -23,8 +23,6 @@ import java.util.Map;
 public class JwtHandShakeInterceptor implements HandshakeInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final ChildRepository childRepository;
-    private final AdviceRepository adviceRepository;
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
