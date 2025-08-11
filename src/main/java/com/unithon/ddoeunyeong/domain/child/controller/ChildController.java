@@ -19,6 +19,7 @@ import com.unithon.ddoeunyeong.domain.child.dto.ChildRequest;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
 import com.unithon.ddoeunyeong.domain.child.service.ChildService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
+import com.unithon.ddoeunyeong.global.security.config.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,8 +36,8 @@ public class ChildController {
 
 	@PostMapping("")
 	@Operation(summary = "아이를 추가하는 API 입니다.\n"+"성별은 BOY, GIRL 로 입력하면 됩니다.")
-	public BaseResponse<Void> makeChild(@RequestBody ChildRequest request){
-		return childService.makeChild(request);
+	public BaseResponse<Void> makeChild(@AuthenticationPrincipal CustomUserDetails customUserDetails, @RequestBody ChildRequest request){
+		return childService.makeChild(customUserDetails,request);
 	}
 
 	@DeleteMapping("")
@@ -47,8 +48,8 @@ public class ChildController {
 
 	@GetMapping("")
 	@Operation(summary = "자식 정보를 제공하는 API 입니다.")
-	public BaseResponse<List<ChildLists>> getAllChild(@RequestParam Long userId){
-		return childService.getAllChild(userId);
+	public BaseResponse<List<ChildLists>> getAllChild(@AuthenticationPrincipal CustomUserDetails customUserDetails){
+		return childService.getAllChild(customUserDetails);
 	}
 
 	@PostMapping(value = "/doll", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

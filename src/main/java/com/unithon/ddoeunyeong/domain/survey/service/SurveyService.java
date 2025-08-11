@@ -38,7 +38,8 @@ public class SurveyService {
 
 		// Survey 생성, Advice 함께 저장
 		Survey survey = Survey.builder()
-			.temp(request.temp())
+			.knowInfo(request.knowInfo())
+			.knowAboutChild(request.knowAboutChild())
 			.advice(advice)
 			.build();
 
