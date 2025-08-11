@@ -115,8 +115,14 @@ public class ChildService {
 
 	public BaseResponse<List<ChildLists>> getAllChild(CustomUserDetails customUserDetails){
 
+
+
 		List<ChildLists> lists = childRepository.findAllByUserId(customUserDetails.getUser().getId())
-			.stream().map(m ->new ChildLists(m.getId(),m.getName()))
+			.stream().map(m -> {
+				Gender gender = m.getGender();
+				String strGender = gender.equals(Gender.BOY) ? "남자" : "여자";
+				return new ChildLists(m.getId(), m.getName(),m.getAge(),strGender);
+			})
 			.toList();
 
 		return BaseResponse.<List<ChildLists>>builder()
