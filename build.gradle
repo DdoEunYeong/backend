@@ -65,6 +65,8 @@ dependencies {
 	//http5
 	implementation 'org.apache.httpcomponents.client5:httpclient5'
 
+	// cv
+	implementation "org.bytedeco:javacv-platform:1.5.10"
 
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -1,14 +1,17 @@
 package com.unithon.ddoeunyeong.domain.utterance.service;
 
-import com.unithon.ddoeunyeong.domain.utterance.dto.LastUtteranceResponse;
+import com.unithon.ddoeunyeong.domain.advice.entity.Emotion;
+import com.unithon.ddoeunyeong.domain.utterance.dto.SaveUtteranceResponse;
 import com.unithon.ddoeunyeong.domain.utterance.entity.UserUtterance;
 import com.unithon.ddoeunyeong.domain.utterance.repository.UserUtteranceRepository;
 import com.unithon.ddoeunyeong.global.exception.CustomException;
 import com.unithon.ddoeunyeong.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserUtteranceService {
@@ -16,14 +19,17 @@ public class UserUtteranceService {
     private final UserUtteranceRepository userUtteranceRepository;
 
     @Transactional
-    public LastUtteranceResponse saveLastUtterance(String userText, Long adviceId) {
-        // 현재 발화를 이전의 UserUtterance에 담아서 저장
-        UserUtterance lastUserUtterance = userUtteranceRepository
+    public SaveUtteranceResponse saveLastUtterance(String userText, Emotion emotion, Long adviceId) {
+
+        // 1) 유저 발화 및 감정 업데이트
+        UserUtterance priorUserUtterance = userUtteranceRepository
                 .findTopByAdviceIdOrderByCreatedAtDesc(adviceId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+                .orElseThrow(() -> {
+                    return new CustomException(ErrorCode.NO_ADVICE);
+                });
 
-        lastUserUtterance.updateUtterance(userText);
+        priorUserUtterance.updateUtteranceAndEmotion(userText,emotion);
 
-        return new LastUtteranceResponse(adviceId);
+        return new SaveUtteranceResponse(adviceId);
     }
 }

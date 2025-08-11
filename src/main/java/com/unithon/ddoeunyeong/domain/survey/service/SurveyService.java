@@ -26,7 +26,6 @@ public class SurveyService {
 	private final ChildRepository childRepository;
 	private final GptService gptService;
 	private final AdviceService adviceService;
-	private final AdviceRepository adviceRepository;
 
 	public BaseResponse<SurveyResponse> createSurvey(SurveyRequest request){
 

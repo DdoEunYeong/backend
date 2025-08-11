@@ -1,20 +1,18 @@
 package com.unithon.ddoeunyeong.infra.gptapi.service;
 
 import java.io.IOException;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.repository.AdviceRepository;
 import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
-import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnser;
+import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnswer;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalRequest;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalResponse;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
@@ -33,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.FirstGPTRequest;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptRequest;
-import com.unithon.ddoeunyeong.infra.gptapi.dto.GptResponse;
+import com.unithon.ddoeunyeong.domain.utterance.dto.ProcessUtteranceResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptTestResponse;
 import com.unithon.ddoeunyeong.domain.survey.dto.SurveyDto;
 import com.unithon.ddoeunyeong.domain.survey.entity.Survey;
@@ -48,6 +46,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GptService {
@@ -63,13 +62,12 @@ public class GptService {
 
 	private final WebClient openAiClient;
 
-	private static final String API_URL = "https://api.openai.com/v1/chat/completions";
-
+	private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+	private static final String OPENAI_IMAGE_EDIT_API_URL = "https://api.openai.com/v1/images/edits";
 	private static final String CHAT_COMPLETIONS_URI = "/v1/chat/completions";
-	private static final String IMAGE_EDIT_URI = "/v1/images/edits";
 
 	@Value("${gpt.api-key}")
-	private String API_KEY;
+	private String OPENAI_API_KEY;
 
 	public String makeFirstQuestionWithSurvey(Survey survey){
 		Child child = survey.getAdvice().getChild();
@@ -89,6 +87,12 @@ public class GptService {
 			throw new CustomException(ErrorCode.JSON_SERIALIZE_FAIL);
 		}
 
+		// 3) 헤더 세팅
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.set("Authorization", OPENAI_API_KEY);
+
+		// 4) system 메시지 설정
 		String systemPrompt = """
         당신은 심리 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.또한 민감한 주제에 대한 질문은 피해주세요.
 		또한 제공하는 값중에서 knowAboutChild는 오늘 답변을 듣기 궁금한 질문입니다. 그리고 getKnowInfo는 오늘 대화에서 참조해줬으면 좋겠는 사항입니다.
@@ -130,31 +134,43 @@ public class GptService {
 		return content.trim();
 	}
 
-	public GptResponse askGptAfterSurvey(String userText, Long adviceId) throws IOException {
-		UserUtterance priorUserUtterance = userUtteranceRepository.findTopByAdviceIdOrderByCreatedAtDesc(adviceId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
-		priorUserUtterance.updateUtterance(userText);
+	public ProcessUtteranceResponse askGptAfterSurvey(String userText, Long adviceId) throws IOException {
+		long t0 = System.currentTimeMillis();
 
-		Advice advice = adviceRepository.findById(adviceId).orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+		// 1) 사전 정보 조회
+		// 상담 객체
+		Advice advice = adviceRepository.findById(adviceId)
+				.orElseThrow(() -> {
+					log.error("[GPT][CTX] Advice 조회 실패: adviceId={}", adviceId);
+					return new CustomException(ErrorCode.NO_ADVICE);
+				});
 
+		// 아이 객체
 		Child child = advice.getChild();
+
+		// 아이 프로필 정보
 		ChildProfile childProfile = ChildProfile.builder()
-			.age(child.getAge())
-			.characterType(child.getCharacterType())
-			.name(child.getName())
-			.build();
+				.age(child.getAge())
+				.characterType(child.getCharacterType())
+				.name(child.getName())
+				.build();
 
-		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository
-			.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-			.map(u -> new QuestionAndAnser(u.getQuestion(), u.getUtterance()))
-			.toList();
+		// 최근 질문 및 응답 5개 정보
+		List<QuestionAndAnswer> rawUserUtterances = userUtteranceRepository
+				.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+				.map(u -> new QuestionAndAnswer(u.getQuestion(), u.getUtterance()))
+				.toList();
 
+		// 사전 조사 정보
 		Survey survey = surveyRepository.findByAdviceId(adviceId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
+				.orElseThrow(() -> {
+					return new CustomException(ErrorCode.NO_SURVEY);
+				});
 		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
 
 		GptRequest gptRequest = new GptRequest(childProfile, rawUserUtterances, surveyDto, userText);
 
+		// 4) 직렬화
 		String userMessageJson;
 		try {
 			userMessageJson = mapper.writeValueAsString(gptRequest);
@@ -162,6 +178,7 @@ public class GptService {
 			throw new CustomException(ErrorCode.JSON_SERIALIZE_FAIL);
 		}
 
+		// 5) system 메시지
 		String systemPrompt = """
         당신은 감정 분석과 꼬리질문을 수행하는 감성 상담 AI입니다. 그리고 어린아이를 대상으로 말한다는 것을 고려해주세요.
         사용자 정보와 발화 이력, 이전 질문이 주어지면, 다음과 같은 JSON 응답을 반환하세요:
@@ -178,31 +195,34 @@ public class GptService {
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
 		body.put("messages", List.of(
-			Map.of("role", "system", "content", systemPrompt),
-			Map.of("role", "user", "content", userMessageJson)
+				Map.of("role", "system", "content", systemPrompt),
+				Map.of("role", "user", "content", userMessageJson)
 		));
 
+		// 7) OpenAI 호출
 		Map<String, Object> responseBody;
 		try {
 			responseBody = openAiClient.post()
-				.uri(CHAT_COMPLETIONS_URI)
-				.bodyValue(body)
-				.retrieve()
-				.onStatus(s -> !s.is2xxSuccessful(),
-					resp -> resp.bodyToMono(String.class)
-						.defaultIfEmpty("")
-						.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
-				.bodyToMono(Map.class)
-				.block();
+					.uri(CHAT_COMPLETIONS_URI)
+					.bodyValue(body)
+					.retrieve()
+					.onStatus(s -> !s.is2xxSuccessful(),
+							resp -> resp.bodyToMono(String.class)
+									.defaultIfEmpty("")
+									.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+					.bodyToMono(Map.class)
+					.block();
 
 			if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
 		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
 
+		// 8) JSON 추출
 		String content = extractContentSafely(responseBody);
 		String jsonOnly = extractFirstJsonObject(content);
 
+		// 9) followUpQuestion 저장
 		JsonNode root = mapper.readTree(jsonOnly);
 		String followUpQuestion = root.path("followUpQuestion").asText("");
 
@@ -211,14 +231,14 @@ public class GptService {
 			.question(followUpQuestion)
 			.build();
 		userUtteranceRepository.save(newUserUtter);
+		log.info("[GPT][FOLLOWUP] 질문 저장: adviceId={} questionLen={}", adviceId, (followUpQuestion == null ? 0 : followUpQuestion.length()));
 
 		try {
-			return mapper.readValue(jsonOnly, GptResponse.class);
+			return mapper.readValue(jsonOnly, ProcessUtteranceResponse.class);
 		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
 		}
 	}
-
 
 	public GptFinalResponse askGptMakeFinalReport(Long adviceId) throws IOException {
 
@@ -227,18 +247,18 @@ public class GptService {
 		Child child = advice.getChild();
 
 		ChildProfile childProfile = ChildProfile.builder()
-			.age(child.getAge())
-			.characterType(child.getCharacterType())
-			.name(child.getName())
-			.build();
+				.age(child.getAge())
+				.characterType(child.getCharacterType())
+				.name(child.getName())
+				.build();
 
-		List<QuestionAndAnser> rawUserUtterances = userUtteranceRepository
-			.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
-			.map(u -> new QuestionAndAnser(u.getQuestion(), u.getUtterance()))
-			.toList();
+		List<QuestionAndAnswer> rawUserUtterances = userUtteranceRepository
+				.findTop5ByAdviceIdOrderByCreatedAtDesc(adviceId).stream()
+				.map(u -> new QuestionAndAnswer(u.getQuestion(), u.getUtterance()))
+				.toList();
 
 		Survey survey = surveyRepository.findByAdviceId(adviceId)
-			.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
+				.orElseThrow(() -> new CustomException(ErrorCode.NO_SURVEY));
 
 		SurveyDto surveyDto = new SurveyDto(survey.getKnowAboutChild(), survey.getKnowInfo());
 
@@ -301,24 +321,24 @@ public class GptService {
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
 		body.put("messages", List.of(
-			Map.of("role", "system", "content", systemPrompt),
-			Map.of("role", "user", "content", userMessageJson)
+				Map.of("role", "system", "content", systemPrompt),
+				Map.of("role", "user", "content", userMessageJson)
 		));
 
 		Map<String, Object> responseBody;
 		try {
 			responseBody = openAiClient.post()
-				.uri(CHAT_COMPLETIONS_URI)
-				.bodyValue(body)
-				.retrieve()
-				.onStatus(s -> !s.is2xxSuccessful(),
-					resp -> resp.bodyToMono(String.class)
-						.defaultIfEmpty("")
-						.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
-				.bodyToMono(Map.class)
-				.block();
+					.uri(CHAT_COMPLETIONS_URI)
+					.bodyValue(body)
+					.retrieve()
+					.onStatus(s -> !s.is2xxSuccessful(),
+							resp -> resp.bodyToMono(String.class)
+									.defaultIfEmpty("")
+									.map(e-> new CustomException(ErrorCode.OPENAI_HTTP_ERROR)))
+					.bodyToMono(Map.class)
+					.block();
 
-		if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
+			if (responseBody == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
 		} catch (Exception e) {
 			throw new CustomException(ErrorCode.OPENAI_COMM_FAIL);
 		}
@@ -353,7 +373,6 @@ public class GptService {
 		}
 	}
 
-
 	@SuppressWarnings("unchecked")
 	private String extractContentSafely(Map<String, Object> responseBody) {
 		Object choicesObj = responseBody.get("choices");
@@ -374,8 +393,6 @@ public class GptService {
 
 		throw new CustomException(ErrorCode.OPENAI_NO_CONTENT);
 	}
-
-	private static final String OPENAI_IMAGE_EDIT_URL = "https://api.openai.com/v1/images/edits";
 
 	public BaseResponse<String> makeDoll(Long childId, MultipartFile file) {
 
@@ -411,7 +428,7 @@ public class GptService {
 		// 3) 헤더
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-		headers.setBearerAuth(API_KEY == null ? "" : API_KEY);
+		headers.setBearerAuth(OPENAI_API_KEY == null ? "" : OPENAI_API_KEY);
 
 		HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
 
@@ -419,7 +436,7 @@ public class GptService {
 		Map<String, Object> res;
 		try {
 			ResponseEntity<Map> resp =
-				restTemplate.postForEntity(OPENAI_IMAGE_EDIT_URL, req, Map.class);
+				restTemplate.postForEntity(OPENAI_IMAGE_EDIT_API_URL, req, Map.class);
 
 			res = resp.getBody();
 			if (res == null) throw new CustomException(ErrorCode.OPENAI_EMPTY_BODY);
@@ -471,8 +488,6 @@ public class GptService {
 			.build();
 	}
 
-
-
 	private ByteArrayResource toResource(MultipartFile file) {
 		try {
 			return new ByteArrayResource(file.getBytes()) {
@@ -490,7 +505,6 @@ public class GptService {
 		int i = name.lastIndexOf('.');
 		return (i > 0) ? name.substring(0, i) : name;
 	}
-
 
 	/** ```json ... ``` 형태여도 첫 번째 JSON 오브젝트만 추출 */
 	private String extractFirstJsonObject(String content) {
@@ -526,7 +540,7 @@ public class GptService {
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("Authorization", API_KEY);
+		headers.set("Authorization", OPENAI_API_KEY);
 
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
@@ -537,7 +551,7 @@ public class GptService {
 
 		HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-		ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, request, Map.class);
+		ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_API_URL, request, Map.class);
 
 		List<Map<String, Object>> choices = (List<Map<String, Object>>)response.getBody().get("choices");
 		Map<String, String> message = (Map<String, String>)choices.get(0).get("message");

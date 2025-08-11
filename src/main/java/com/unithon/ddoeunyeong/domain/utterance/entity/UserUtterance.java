@@ -1,15 +1,11 @@
 package com.unithon.ddoeunyeong.domain.utterance.entity;
 
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
+import com.unithon.ddoeunyeong.domain.advice.entity.Emotion;
 import com.unithon.ddoeunyeong.domain.child.entity.Child;
 import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,14 +30,21 @@ public class UserUtterance extends BaseTimeEntity {
 	@Setter
 	private String utterance;
 
+	@Enumerated(EnumType.STRING)
+	private Emotion dominantEmotion;
+
 	@Builder
 	private UserUtterance(Advice advice, String question){
 		this.advice = advice;
 		this.question = question;
 	}
 
-	public void updateUtterance(String utterance){
+	public void updateUtteranceAndEmotion (
+			String utterance,
+			Emotion emotion
+	){
 		this.utterance = utterance;
+		this.dominantEmotion = emotion;
 	}
 
 }

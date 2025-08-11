@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.unithon.ddoeunyeong.domain.survey.dto.SurveyDto;
 import com.unithon.ddoeunyeong.domain.child.dto.ChildProfile;
-import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnser;
+import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnswer;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,7 +15,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class GptRequest {
 	private ChildProfile childProfile;
-	private List<QuestionAndAnser> history;
+	private List<QuestionAndAnswer> history;
 	private SurveyDto survey;
 	private String latestInput;
 }

@@ -1,5 +1,5 @@
 package com.unithon.ddoeunyeong.domain.utterance.dto;
 
-public record LastUtteranceResponse(
+public record SaveUtteranceResponse(
         Long adviceId
 ) {}
