@@ -357,7 +357,7 @@ public class GptService {
 			- coreQuestion: 지금까지 맥락에서 가장 중요한 집중 질문 1개 (가능하면 knowAboutChild를 반영)
 			- childAnswer: knowAboutChild에 대한 아이의 실제 발화 기반 답변. 아이의 발화에서 근거가 명확할 때만 작성.
 			  근거가 없으면 "해당 주제에 대해서 말하지 않았어요."로 둔다(추측 금지).
-			- otehrTalks: knowAboutChild와 관계 없이 이야기 한 내용에 대한 답변들.  
+			- otherTalks: knowAboutChild와 관계 없이 이야기 한 내용에 대한 답변들.  
 			- frequentWordList: rawUserUtterances에서 자주 사용된 단어 5가지 (1번만 사용한 단어여도 좋으니 무조건 5가지)
 			
 			중요 지침:
@@ -374,7 +374,7 @@ public class GptService {
 			  "summary": "오늘 00이는 친구와 선생님 이야기를 들려줬어요. 같이 해 보자는 마음과 고마운 마음도 잘 표현하고 있어요!",
 			  "coreQuestion": "오늘 가장 같이 하고 싶었던 놀이는 뭐였어?",
 			  "childAnswer": "블록 놀이를 친구랑 같이 하고 싶다고 했어요.",
-			  "otherTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요"
+			  "otherTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요",
 			  "frequentWordList": [ 
 			  	"좋아요", 
 			  	"엄마", 
@@ -387,6 +387,7 @@ public class GptService {
 
 		Map<String, Object> body = new HashMap<>();
 		body.put("model", "gpt-4o");
+		body.put("response_format", Map.of("type", "json_object"));
 		body.put("messages", List.of(
 				Map.of("role", "system", "content", systemPrompt),
 				Map.of("role", "user", "content", userMessageJson)
