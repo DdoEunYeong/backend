@@ -46,10 +46,11 @@ public class GeminiService {
 	@Value("${ai.url}")
 	private  String fastApiUrl;
 
-	private static  final String instruction = "Remove 100% of the background, leaving only the main subject (person/object) with perfectly sharp and clean edges. " +
-		"Ensure the background is fully transparent with alpha channel preserved (PNG format). " +
-		"Do not leave any white, grey, or semi-transparent artifacts. " +
-		"Output must be a high-quality transparent PNG image.";
+	private static final String instruction =
+			"Remove 100% of the background, leaving only the main subject (person/object) with perfectly sharp and clean edges. " +
+					"Instead of making the background transparent, fill the background with solid color #E1E8F0. " +
+					"Ensure the fill is uniform with no white, grey, or semi-transparent artifacts. " +
+					"Output must be a high-quality PNG image with the background fully replaced by #E1E8F0.";
 
 	@Transactional
 	public BaseResponse<GeminiResponse> editImage(Long childId,MultipartFile file){
