@@ -52,6 +52,67 @@ public class AdviceService {
         advice.updateStatus(status);
     }
 
+    public AdviceReportResponse getAdviceReport(Long adviceId) {
+        // 1) 기본 로드
+        Advice advice = adviceRepository.findById(adviceId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+
+        List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
+
+        // 2) 계산 항목
+        int emotionDiversityScore = calculateEmotionDiversityScore(utteranceList);
+        Emotion emotion = mostFrequentEmotionEnum(utteranceList);
+        String mostFreqExpressionLabel = mapEmotionToLabel(emotion);
+
+        String durationText = formatDuration(safeGetDurationSeconds(advice)); // "45분" 형태
+
+        // sessionNumber = 해당 child의 전체 상담 개수
+        int sessionNumber = Math.toIntExact(
+                adviceRepository.countByChildId(advice.getChild().getId())
+        );
+
+        // 사회 점수 & 협력 점수
+        int socialReferenceScore = safeInt(advice.getSocialScore());
+        int cooperationKindness  = safeInt(advice.getCoopScore());
+
+        // 총점: 정책에 따라 조정 가능
+        int totalScore = (socialReferenceScore + cooperationKindness + emotionDiversityScore)/3;
+
+        // 4) QnA: 발화 리스트에서 최대 5개 추출
+        List<AdviceReportResponse.QnA> qnaList = utteranceList.stream()
+                .filter(u -> u.getQuestion() != null || u.getUtterance() != null)
+                .limit(5)
+                .map(u -> AdviceReportResponse.QnA.builder()
+                        .question(nullToDash(u.getQuestion()))
+                        .answer(nullToDash(u.getUtterance()))
+                        .build())
+                .toList();
+
+        // 5) 응답 빌드
+        return AdviceReportResponse.builder()
+                .childName(advice.getChild().getName())
+                .sessionNumber(sessionNumber)
+                .consultationDate(advice.getCreatedAt().toLocalDate())
+                // 좌상단
+                .consultationTopic(advice.getSummary())
+                .duration(durationText)
+                .coreQuestion(advice.getCoreQ())
+                // 우상단
+                .childAnswer(advice.getChildAns())
+                .otherTalks(advice.getOtherTalks())
+                // 중앙
+                .totalScore(totalScore)
+                // 좌하단
+                .socialReferenceScore(socialReferenceScore)
+                .cooperationKindnessScore(cooperationKindness)
+                .emotionDiversityScore(emotionDiversityScore)
+                // 중앙하단
+                .mostFrequentExpression(mostFreqExpressionLabel)
+                // 우하단
+                .qnaList(qnaList)
+                .build();
+    }
+
     @Transactional
     public AdviceReportResponse makeAdviceReport(Long adviceId, GPTAdviceReportResponse gpt) {
         // 1) 기본 로드
@@ -61,22 +122,29 @@ public class AdviceService {
         List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
 
         // 2) 계산 항목
-        int emotionDiversityScore = calculateEmotionDiversityScore(utteranceList); // 이미 있음
-        String mostFreqExpression  = mostFrequentExpression(utteranceList);        // 아래 헬퍼
-        String durationText        = formatDuration(safeGetDurationSeconds(advice)); // "45분" 형태
-        // sessionNumber = 해당 child의 전체 상담 개수
+        // (저장 O) 감정 다양성 및 가장 많은 표정 계산
+        int emotionDiversityScore = calculateEmotionDiversityScore(utteranceList);
+        Emotion emotion = mostFrequentEmotionEnum(utteranceList);
+        String mostFreqExpressionLabel = mapEmotionToLabel(emotion);
+        advice.updateEmotion(emotionDiversityScore, emotion);
+
+        // (저장 X) 초 기반의 duration 불러와서 계산
+        String durationText = formatDuration(safeGetDurationSeconds(advice)); // "45분" 형태
+
+        // (저장 X) sessionNumber = 해당 child의 전체 상담 개수
         int sessionNumber = Math.toIntExact(
                 adviceRepository.countByChildId(advice.getChild().getId())
         );
 
-        // 3) GPT 필드 매핑 (record이므로 gpt.socialReferenceScore() 형태)
+        // 3) (저장 X; 이미 저장되어있음) GPT 필드 매핑 (record이므로 gpt.socialReferenceScore() 형태)
         int socialReferenceScore   = safeInt(gpt.socialReferenceScore());     // null 안전 변환
         int cooperationKindness    = safeInt(gpt.cooperationKindnessScore());
 
-        // 총점: 정책에 따라 조정 가능
+        // (저장 O) 총점: 정책에 따라 조정 가능
         int totalScore = (socialReferenceScore + cooperationKindness + emotionDiversityScore)/3;
+        advice.updateTotalScore(totalScore);
 
-        // 4) QnA: 발화 리스트에서 최대 5개 추출
+        // 4) (저장 X) QnA: 발화 리스트에서 최대 5개 추출
         List<AdviceReportResponse.QnA> qnaList = utteranceList.stream()
                 .filter(u -> u.getQuestion() != null || u.getUtterance() != null)
                 .limit(5)
@@ -105,12 +173,18 @@ public class AdviceService {
                 .cooperationKindnessScore(cooperationKindness)
                 .emotionDiversityScore(emotionDiversityScore)
                 // 중앙하단
-                .mostFrequentExpression(mostFreqExpression)
+                .mostFrequentExpression(mostFreqExpressionLabel)
                 // 우하단
                 .qnaList(qnaList)
                 .build();
     }
 
+    @Transactional
+    public void writeDuration(Long adviceId, Long seconds){
+        Advice advice = adviceRepository.findById(adviceId).orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+
+        advice.updateDuration(seconds);
+    }
 
     private int calculateEmotionDiversityScore(List<UserUtterance> utterances) {
         if (utterances == null || utterances.isEmpty()) {
@@ -169,16 +243,16 @@ public class AdviceService {
         return (s == null || s.isBlank()) ? "-" : s;
     }
 
-    private String mostFrequentExpression(List<UserUtterance> list) {
-        if (list == null || list.isEmpty()) return "-";
+    private Emotion mostFrequentEmotionEnum(List<UserUtterance> list) {
+        if (list == null || list.isEmpty()) return null; // 필요 시 Emotion.NEUTRAL
         return list.stream()
                 .map(UserUtterance::getDominantEmotion)
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(e -> e, Collectors.counting()))
                 .entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(e -> mapEmotionToLabel(e.getKey()))
-                .orElse("-");
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     private String mapEmotionToLabel(Emotion e) {
@@ -187,11 +261,10 @@ public class AdviceService {
             case HAPPY     -> "기쁨";
             case SAD       -> "슬픔";
             case ANGRY     -> "분노";
-            case SURPRISE -> "놀람";
+            case SURPRISE  -> "놀람";
             case DISGUST   -> "혐오";
             case FEAR      -> "두려움";
-            case NEUTRAL   -> "무표정";
-            default        -> e.name();
+            case NEUTRAL   -> "중립";
         };
     }
 

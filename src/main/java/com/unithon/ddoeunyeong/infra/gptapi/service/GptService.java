@@ -60,7 +60,6 @@ public class GptService {
 	private final ObjectMapper mapper = new ObjectMapper();
 	private final S3Service s3Service;
 
-	private final AdviceService adviceService;
 	private final WebClient openAiClient;
 
 	private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
@@ -123,6 +122,7 @@ public class GptService {
 			[자기 점검]
 			- 출력 전에 확인: (a) 질문 1개인가? (b) 민감 직접 질문 아닌가? (c) 너무 어렵지 않은가?
 			  하나라도 위반이면 즉시 다시 생성하여 기준을 만족시킵니다.
+			  조건도 조건이지만, 자연스러운 대화흐름이 중요하기에 가끔씩은 변화를 줘도 좋습니다.
 			
 			이제 아래 사용자 입력(FirstGPTRequest: childProfile{name, age, characterType}, survey{knowAboutChild, knowInfo})을 읽고,
 			위 규칙을 따라 '질문 1개'만 출력하세요.
@@ -372,7 +372,7 @@ public class GptService {
 			  "summary": "오늘 00이는 친구와 선생님 이야기를 들려줬어요. 같이 해 보자는 마음과 고마운 마음도 잘 표현하고 있어요!",
 			  "coreQuestion": "오늘 가장 같이 하고 싶었던 놀이는 뭐였어?",
 			  "childAnswer": "블록 놀이를 친구랑 같이 하고 싶다고 했어요.",
-			  "otehrTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요"
+			  "otherTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요"
 			}
 			""";
 

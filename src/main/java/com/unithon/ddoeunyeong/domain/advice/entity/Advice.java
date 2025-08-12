@@ -53,7 +53,13 @@ public class Advice extends BaseTimeEntity {
     private String otherTalks;
 
     @Setter
+    private int totalScore;
+
+    @Setter
     private int emotionDiversityScore;
+
+    @Setter
+    private Long duration;
 
     // 대표 감정 값을 통해 감정
     @Enumerated(EnumType.STRING)
@@ -80,7 +86,16 @@ public class Advice extends BaseTimeEntity {
         this.otherTalks = otherTalks;
     }
 
-    public void updateEmotionDiversityScore(int emotionDiversityScore){
+    public void updateEmotion(int emotionDiversityScore, Emotion emotion){
         this.emotionDiversityScore = emotionDiversityScore;
+        this.dominantEmotion = emotion;
+    }
+
+    public void updateDuration(Long duration){
+        this.duration = duration;
+    }
+
+    public void updateTotalScore(int totalScore){
+        this.totalScore = totalScore;
     }
 }
