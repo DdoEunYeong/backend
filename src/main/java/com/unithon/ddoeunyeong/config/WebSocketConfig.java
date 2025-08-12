@@ -16,11 +16,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final StreamWebSocketHandler streamWebSocketHandler;
     private final JwtHandShakeInterceptor jwtHandShakeInterceptor;
 
+    // Todo 추후 배포 링크 추가 필요
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(streamWebSocketHandler, "/ws/stream")
                 .addInterceptors(jwtHandShakeInterceptor)
-                .setAllowedOriginPatterns("http://localhost:5500");
+                .setAllowedOriginPatterns("http://localhost:3000");
     }
 }
 
