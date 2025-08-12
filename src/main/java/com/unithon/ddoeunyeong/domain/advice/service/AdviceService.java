@@ -1,5 +1,6 @@
 package com.unithon.ddoeunyeong.domain.advice.service;
 
+import com.unithon.ddoeunyeong.domain.advice.dto.AdvicePreviewListResponse;
 import com.unithon.ddoeunyeong.domain.advice.dto.AdviceReportResponse;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus;
@@ -50,6 +51,24 @@ public class AdviceService {
         Advice advice = adviceRepository.findById(adviceId).orElseThrow();
         if (s3Url != null) advice.saveVideoUrl(s3Url);
         advice.updateStatus(status);
+    }
+
+    public AdvicePreviewListResponse getAdviceList(Long childId) {
+        // childId로 Advice 목록 조회 (예: 최신순)
+        List<Advice> adviceList = adviceRepository.findTop6ByChildIdOrderByCreatedAtDesc(childId);
+
+        // Advice → AdvicePreview 매핑
+        List<AdvicePreviewListResponse.AdvicePreview> previews = adviceList.stream()
+                .map(advice -> {
+                    return new AdvicePreviewListResponse.AdvicePreview(
+                            advice.getId(),
+                            advice.getCreatedAt().toLocalDate().toString(),
+                            advice.getTotalScore()
+                    );
+                })
+                .toList();
+
+        return new AdvicePreviewListResponse(previews);
     }
 
     public AdviceReportResponse getAdviceReport(Long adviceId) {
