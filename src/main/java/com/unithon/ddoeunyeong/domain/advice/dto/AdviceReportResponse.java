@@ -11,6 +11,7 @@ import java.util.List;
 public class AdviceReportResponse {
 
     private String childName;              // 아이 이름
+    private String imageUrl; // 아이 사진
     private int sessionNumber;             // 상담 차시
     private LocalDate consultationDate;    // 상담 날짜 (년월일)
 
@@ -43,4 +44,6 @@ public class AdviceReportResponse {
         private String question;
         private String answer;
     }
+
+    private List<String> freqeuntWordList;
 }

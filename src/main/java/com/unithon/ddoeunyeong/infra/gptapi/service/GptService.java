@@ -341,29 +341,31 @@ public class GptService {
 			- 의미: 대화 중 ‘타인’을 언급한 빈도를 100점 만점으로 환산
 			- 카운트 규칙: '친구', '선생님', '반 친구', '엄마', '아빠', '형', '누나', '동생', '사촌', '이모', '삼촌' 등 타인 지칭이 등장할 때마다 +1
 			- 점수화(캡 규칙):
-				0회=20, 1회=40, 2회=60, 3회=80, 4회 이상=100
+				0회=50, 1회=60, 2회=70, 3회=80, 4회 이상=100
 			  (동일 문장 내 여러 타인 단어가 있으면 각각 카운트)
 			
 			2) 협력·배려 점수 (cooperationKindnessScore)
 			- 의미: 협력/배려 의도가 담긴 발화 빈도를 100점 만점으로 환산
 			- 카운트 규칙 키워드 예: '같이', '함께', '도와줄게', '도와줘', '도와주다', '고마워', '미안해', '괜찮아', '잘했어', '수고했어'
 			- 점수화(캡 규칙):
-				0회=20, 1회=40, 2회=60, 3회=80, 4회 이상=100
+				0회=50, 1회=60, 2회=70, 3회=80, 4회 이상=100
 			
 			출력 필드 (반드시 모두 포함):
-			- socialReferenceScore: 0~100 정수
-			- cooperationKindnessScore: 0~100 정수
+			- socialReferenceScore: 50부터 100 사이의 정수
+			- cooperationKindnessScore: 50부터 100사이 정수
 			- summary: 전체 대화 요지를 부모님에게 제공해주는 것으로 2문장으로 요약
 			- coreQuestion: 지금까지 맥락에서 가장 중요한 집중 질문 1개 (가능하면 knowAboutChild를 반영)
 			- childAnswer: knowAboutChild에 대한 아이의 실제 발화 기반 답변. 아이의 발화에서 근거가 명확할 때만 작성.
 			  근거가 없으면 "해당 주제에 대해서 말하지 않았어요."로 둔다(추측 금지).
 			- otehrTalks: knowAboutChild와 관계 없이 이야기 한 내용에 대한 답변들.  
+			- frequentWordList: rawUserUtterances에서 자주 사용된 단어 5가지 (1번만 사용한 단어여도 좋으니 무조건 5가지)
 			
 			중요 지침:
 			- getKnowInfo는 summary와 coreQuestion의 어투/맥락 반영에만 사용한다(점수엔 직접 가중치 주지 말 것).
 			- 점수 계산은 오직 카운트 기반 규칙으로 일관되게 수행한다.
 			- 출력은 JSON 객체 **한 개만** 반환하고, JSON 외 텍스트/주석/설명은 절대 포함하지 말 것.
 			- JSON 키 이름과 자료형을 정확히 지킬 것. 불필요한 필드 추가 금지.
+			- 값에 null 값을 절대 주지 말 것
 			
 			출력 예시:
 			{
@@ -373,6 +375,13 @@ public class GptService {
 			  "coreQuestion": "오늘 가장 같이 하고 싶었던 놀이는 뭐였어?",
 			  "childAnswer": "블록 놀이를 친구랑 같이 하고 싶다고 했어요.",
 			  "otherTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요"
+			  "frequentWordList": [ 
+			  	"좋아요", 
+			  	"엄마", 
+			  	"아빠", 
+			  	"학교", 
+			  	"재밌어요" 
+			  ]
 			}
 			""";
 
@@ -403,6 +412,9 @@ public class GptService {
 
 		String content = extractContentSafely(responseBody);
 		String jsonOnly = extractFirstJsonObject(content);
+
+		log.info("[GPT JSON Only] {}", jsonOnly);
+
 		if (jsonOnly == null || jsonOnly.isBlank()) {
 			throw new CustomException(ErrorCode.OPENAI_PARSE_FAIL);
 		}
@@ -417,9 +429,10 @@ public class GptService {
 			String coreQ    = gpt.coreQuestion() == null ? "" : gpt.coreQuestion();
 			String childAns = gpt.childAnswer() == null ? "" : gpt.childAnswer();
 			String otherTalks = gpt.otherTalks() == null ? "" : gpt.otherTalks();
+			List<String> frequentWordList = gpt.frequentWordList() == null ? List.of("") : gpt.frequentWordList();
 
 			// 4) Advice 엔티티 업데이트 후 저장
-			advice.updateGPTReportResult(socialScore, coopScore, summary,coreQ,childAns,otherTalks);
+			advice.updateGPTReportResult(socialScore, coopScore, summary,coreQ,childAns,otherTalks,frequentWordList);
 			adviceRepository.save(advice);
 
 			return gpt;

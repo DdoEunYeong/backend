@@ -86,6 +86,8 @@ public class AdviceService {
         Advice advice = adviceRepository.findById(adviceId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
 
+        Child child = advice.getChild();
+
         List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
 
         // 2) 계산 항목
@@ -97,7 +99,7 @@ public class AdviceService {
 
         // sessionNumber = 해당 child의 전체 상담 개수
         int sessionNumber = Math.toIntExact(
-                adviceRepository.countByChildId(advice.getChild().getId())
+                adviceRepository.countByChildId(child.getId())
         );
 
         // 사회 점수 & 협력 점수
@@ -119,7 +121,8 @@ public class AdviceService {
 
         // 5) 응답 빌드
         return AdviceReportResponse.builder()
-                .childName(advice.getChild().getName())
+                .childName(child.getName())
+                .imageUrl(child.getImageUrl())
                 .sessionNumber(sessionNumber)
                 .consultationDate(advice.getCreatedAt().toLocalDate())
                 // 좌상단
@@ -139,6 +142,7 @@ public class AdviceService {
                 .mostFrequentExpression(mostFreqExpressionLabel)
                 // 우하단
                 .qnaList(qnaList)
+                .freqeuntWordList(advice.getFrequentWordList())
                 .build();
     }
 
@@ -147,6 +151,8 @@ public class AdviceService {
         // 1) 기본 로드
         Advice advice = adviceRepository.findById(adviceId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+
+        Child child = advice.getChild();
 
         List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
 
@@ -162,7 +168,7 @@ public class AdviceService {
 
         // (저장 X) sessionNumber = 해당 child의 전체 상담 개수
         int sessionNumber = Math.toIntExact(
-                adviceRepository.countByChildId(advice.getChild().getId())
+                adviceRepository.countByChildId(child.getId())
         );
 
         // 3) (저장 X; 이미 저장되어있음) GPT 필드 매핑 (record이므로 gpt.socialReferenceScore() 형태)
@@ -183,9 +189,12 @@ public class AdviceService {
                         .build())
                 .toList();
 
+        adviceRepository.save(advice);
+
         // 5) 응답 빌드
         return AdviceReportResponse.builder()
-                .childName(advice.getChild().getName())
+                .childName(child.getName())
+                .imageUrl(child.getImageUrl())
                 .sessionNumber(sessionNumber)
                 .consultationDate(advice.getCreatedAt().toLocalDate())
                 // 좌상단
@@ -205,6 +214,7 @@ public class AdviceService {
                 .mostFrequentExpression(mostFreqExpressionLabel)
                 // 우하단
                 .qnaList(qnaList)
+                .freqeuntWordList(advice.getFrequentWordList())
                 .build();
     }
 
@@ -222,6 +232,10 @@ public class AdviceService {
 
         int totalCount = utterances.size();
         int neutralCount = 0;
+        int positiveCount = 0;
+
+        // 긍정 감정 목록 정의
+        Set<Emotion> positiveEmotions = EnumSet.of(Emotion.HAPPY, Emotion.SURPRISE);
 
         // 등장한 감정 종류 Set
         Set<Emotion> uniqueEmotions = EnumSet.noneOf(Emotion.class);
@@ -233,6 +247,9 @@ public class AdviceService {
                 if (e == Emotion.NEUTRAL) {
                     neutralCount++;
                 }
+                if (positiveEmotions.contains(e)) {
+                    positiveCount++;
+                }
             }
         }
 
@@ -242,11 +259,24 @@ public class AdviceService {
         // NEUTRAL 비율
         double neutralRatio = (double) neutralCount / totalCount;
 
-        // 기본 점수 × (1 - neutral 비율)
+        // 긍정 비율
+        double positiveRatio = (double) positiveCount / totalCount;
+
+        // 기본 점수
         double adjustedScore = diversityRatio * 100 * (1 - neutralRatio);
 
-        return (int) Math.round(adjustedScore);
+        // 긍정 감정 가중치 적용
+        // 긍정 비율이 높을수록 점수 상향 (최대 +20점)
+        adjustedScore += positiveRatio * 20;
+
+        // 최소 점수 보장: 긍정 비율이 50% 이상이면 최소 50점
+        if (positiveRatio >= 0.5 && adjustedScore < 50) {
+            adjustedScore = 50;
+        }
+
+        return (int) Math.round(Math.min(adjustedScore, 100)); // 최대 100점 제한
     }
+
 
     private String formatDuration(Long durationSeconds) {
         if (durationSeconds == null || durationSeconds <= 0) return "0분";

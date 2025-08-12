@@ -6,6 +6,9 @@ import com.unithon.ddoeunyeong.global.time.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
@@ -61,6 +64,14 @@ public class Advice extends BaseTimeEntity {
     @Setter
     private Long duration;
 
+    @ElementCollection
+    @CollectionTable(
+            name = "advice_frequent_words", // 별도 테이블 이름
+            joinColumns = @JoinColumn(name = "advice_id") // FK
+    )
+    @Column(name = "word")
+    private List<String> frequentWordList = new ArrayList<>();
+
     // 대표 감정 값을 통해 감정
     @Enumerated(EnumType.STRING)
     private Emotion dominantEmotion;
@@ -77,13 +88,22 @@ public class Advice extends BaseTimeEntity {
         this.sessionId = sessionId;
     }
 
-    public void updateGPTReportResult(Long socialScore, Long coopScore, String summary, String coreQ, String childAns, String otherTalks) {
+    public void updateGPTReportResult(
+            Long socialScore,
+            Long coopScore,
+            String summary,
+            String coreQ,
+            String childAns,
+            String otherTalks,
+            List<String> frequentWordList
+    ) {
         this.socialScore = socialScore;
         this.coopScore = coopScore;
         this.summary = summary;
         this.coreQ = coreQ;
         this.childAns = childAns;
         this.otherTalks = otherTalks;
+        this.frequentWordList = frequentWordList;
     }
 
     public void updateEmotion(int emotionDiversityScore, Emotion emotion){
