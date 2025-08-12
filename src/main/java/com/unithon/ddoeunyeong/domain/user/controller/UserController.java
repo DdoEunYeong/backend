@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.unithon.ddoeunyeong.domain.user.dto.ChangePassword;
 import com.unithon.ddoeunyeong.domain.user.dto.LoginRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.SignUpRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.UserInfo;
@@ -60,6 +61,28 @@ public class UserController {
 	public BaseResponse<UserInfo> getUserInfo(@AuthenticationPrincipal CustomUserDetails customUserDetails){
 		return userService.getUser(customUserDetails);
 	}
+
+	@GetMapping("/findAccount")
+	@Operation(summary = "아이디를 찾는 API입니다.")
+	public BaseResponse<String> getId(@RequestParam String name){
+		return userService.getId(name);
+	}
+
+
+	@GetMapping("/password")
+	@Operation(summary = "비밀번호를 찾기를 하였을 때 처음 사용하는 API입니다.")
+	public BaseResponse<Long> getPassword(@RequestParam String userId){
+		return userService.getPassword(userId);
+	}
+
+	@PatchMapping("/password")
+	@Operation(summary = "비밀번호를 수정하는 API입니다.")
+	public BaseResponse<Void> patchPassword(@RequestBody ChangePassword changePassword){
+		return userService.patchPassword(changePassword);
+	}
+
+
+
 
 
 

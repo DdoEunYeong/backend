@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -28,6 +29,7 @@ public class User extends BaseTimeEntity {
 	private String userId;
 
 	@Column(nullable = false)
+	@Setter
 	private String password;
 
 	//부모의 이름

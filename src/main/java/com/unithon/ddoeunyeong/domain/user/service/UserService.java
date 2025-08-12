@@ -4,6 +4,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.unithon.ddoeunyeong.domain.user.dto.ChangePassword;
 import com.unithon.ddoeunyeong.domain.user.dto.LoginRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.SignUpRequest;
 import com.unithon.ddoeunyeong.domain.user.dto.UserInfo;
@@ -119,5 +120,56 @@ public class UserService {
 			.build();
 	}
 
+	@Transactional
+	public BaseResponse<String> getId(String name){
+
+		User user = userRepository.findByName(name)
+			.orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+		return BaseResponse.<String>builder()
+			.code(200)
+			.message("유저 ID를 찾았습니다.")
+			.data(user.getUserId())
+			.isSuccess(true)
+			.build();
+
+	}
+
+
+
+	@Transactional
+	public BaseResponse<Long> getPassword(String userId){
+
+		User user = userRepository.findByUserId(userId)
+			.orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+		return BaseResponse.<Long>builder()
+			.code(200)
+			.message("유저를 ID로 찾았습니다.")
+			.data(user.getId())
+			.isSuccess(true)
+			.build();
+
+	}
+
+	@Transactional
+	public BaseResponse<Void> patchPassword(ChangePassword changePassword){
+
+		User user = userRepository.findById(changePassword.id())
+			.orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+
+		user.setPassword(passwordEncoder.encode(changePassword.newPassword()));
+
+		userRepository.save(user);
+
+		return BaseResponse.<Void>builder()
+			.code(200)
+			.message("비밀번호를 변경했습니다.")
+			.data(null)
+			.isSuccess(true)
+			.build();
+
+	}
 
 }
