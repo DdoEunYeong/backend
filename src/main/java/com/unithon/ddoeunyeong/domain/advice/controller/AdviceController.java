@@ -2,6 +2,8 @@ package com.unithon.ddoeunyeong.domain.advice.controller;
 
 import com.unithon.ddoeunyeong.domain.advice.dto.AdvicePreviewListResponse;
 import com.unithon.ddoeunyeong.domain.advice.dto.AdviceReportResponse;
+import com.unithon.ddoeunyeong.domain.advice.dto.AdviceResponse;
+import com.unithon.ddoeunyeong.domain.advice.dto.AdviceVideoResponse;
 import com.unithon.ddoeunyeong.domain.advice.service.AdviceService;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GPTAdviceReportResponse;
@@ -28,6 +30,18 @@ public class AdviceController {
                 .code(200)
                 .message("상담 리스트가 조회되었습니다.")
                 .data(adviceService.getAdviceList(childId))
+                .isSuccess(true)
+                .build();
+    }
+
+    @GetMapping("/advice/{adviceId}/video")
+    @Operation(summary = "상담 영상 url를 조회하는 API입니다.", description = "해당 API를 호출해서 상담 영상 url를 조회해주세요.")
+    public BaseResponse<AdviceVideoResponse> getVideoUrl(@PathVariable Long adviceId){
+
+        return BaseResponse.<AdviceVideoResponse>builder()
+                .code(200)
+                .message("상담 결과가 조회되었습니다.")
+                .data(adviceService.getVideoUrl(adviceId))
                 .isSuccess(true)
                 .build();
     }

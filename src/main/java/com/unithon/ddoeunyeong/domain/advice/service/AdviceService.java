@@ -2,6 +2,7 @@ package com.unithon.ddoeunyeong.domain.advice.service;
 
 import com.unithon.ddoeunyeong.domain.advice.dto.AdvicePreviewListResponse;
 import com.unithon.ddoeunyeong.domain.advice.dto.AdviceReportResponse;
+import com.unithon.ddoeunyeong.domain.advice.dto.AdviceVideoResponse;
 import com.unithon.ddoeunyeong.domain.advice.entity.Advice;
 import com.unithon.ddoeunyeong.domain.advice.entity.AdviceStatus;
 import com.unithon.ddoeunyeong.domain.advice.entity.Emotion;
@@ -40,7 +41,8 @@ public class AdviceService {
 
     @Transactional
     public Advice startAdviceSession(Long adviceId, String sessionId) {
-        Advice advice = adviceRepository.findById(adviceId).orElse(null);
+        Advice advice = adviceRepository.findById(adviceId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
         advice.updateSessionId(sessionId);
         advice.updateStatus(AdviceStatus.IN_PROGRESS);
         return adviceRepository.save(advice);
@@ -48,9 +50,17 @@ public class AdviceService {
 
     @Transactional
     public void finishAdviceSession(Long adviceId, String s3Url, AdviceStatus status) {
-        Advice advice = adviceRepository.findById(adviceId).orElseThrow();
+        Advice advice = adviceRepository.findById(adviceId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
         if (s3Url != null) advice.saveVideoUrl(s3Url);
         advice.updateStatus(status);
+    }
+
+    public AdviceVideoResponse getVideoUrl(Long adviceId){
+        Advice advice = adviceRepository.findById(adviceId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
+
+        return new AdviceVideoResponse(advice.getVideoUrl());
     }
 
     public AdvicePreviewListResponse getAdviceList(Long childId) {
