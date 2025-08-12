@@ -87,7 +87,7 @@ public class SecurityConfig {
 		config.setAllowedOrigins(List.of("http://localhost:5500")); // 명시 오리진
 		config.setAllowedOriginPatterns(List.of("*"));
 		config.setAllowedHeaders(List.of("*"));
-		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"));
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return new CorsFilter(source);
