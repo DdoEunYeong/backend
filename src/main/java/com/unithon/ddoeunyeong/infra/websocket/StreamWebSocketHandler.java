@@ -15,6 +15,7 @@ import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.*;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +36,22 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
     // 사용자별 frame 저장소
     private final Map<String, List<byte[]>> sessionChunks = new ConcurrentHashMap<>();
 
+    private static final String ATTR_ADVICE_ID = "adviceId";
+    private static final String ATTR_START_AT   = "startAt";
+    private static final String ATTR_DUR_WRITTEN = "durationWritten";
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        Long adviceId = (Long) session.getAttributes().get("adviceId");
+        Long adviceId = (Long) session.getAttributes().get(ATTR_ADVICE_ID);
 
-        // 재진입 방지
-        if (session.getAttributes().get("adviceId") == null) {
+        // 재진입 방지 + 세션 시작 시각 저장
+        if (adviceId == null) {
             Advice advice = adviceService.startAdviceSession(adviceId, session.getId());
-            session.getAttributes().put("adviceId", advice.getId());
+            session.getAttributes().put(ATTR_ADVICE_ID, advice.getId());
         }
+        // 세션 시작 타임스탬프
+        session.getAttributes().put(ATTR_START_AT, Instant.now());
+        session.getAttributes().put(ATTR_DUR_WRITTEN, false);
 
         sessionChunks.put(session.getId(), new ArrayList<>());
         log.info("[WS][OPEN] id={}", session.getId());
@@ -65,9 +73,12 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
         String msg = message.getPayload();
         log.info("[WS][TXT] 텍스트 수신: id={} msg='{}'", session.getId(), msg);
         if ("end".equals(msg)) {
+            // 먼저 duration 기록을 시도 (중복 방지)
+            writeDurationOnce(session);
+
             log.info("[WS][END] 업로드 시작: id={}", session.getId());
             String url = saveAndUpload(session.getId());
-            Long adviceId = (Long) session.getAttributes().get("adviceId");
+            Long adviceId = (Long) session.getAttributes().get(ATTR_ADVICE_ID);
             adviceService.finishAdviceSession(adviceId, url, UPLOAD_SUCCESSED);
             if (url != null) {
                 log.info("[WS][END] 업로드 완료: id={} url={}", session.getId(), url);
@@ -125,13 +136,45 @@ public class StreamWebSocketHandler extends BinaryWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        Long adviceId = (Long) session.getAttributes().get("adviceId");
+        // 소켓이 정상/비정상 종료돼도 duration이 기록되지 않았다면 기록
+        writeDurationOnce(session);
+
+        Long adviceId = (Long) session.getAttributes().get(ATTR_ADVICE_ID);
         if (adviceId != null) {
             adviceService.finishAdviceSession(adviceId, /*url=*/null, /*status=*/COMPLETED);
         }
         sessionChunks.remove(session.getId());
         log.info("[WS][CLOSE] 세션 종료: id={} code={} reason={}",
                 session.getId(), status.getCode(), status.getReason());
+    }
+
+    /** startAt 기반으로 경과 시간(초)을 계산해 advice.writeDuration() 한 번만 호출 */
+    private void writeDurationOnce(WebSocketSession session) {
+        try {
+            Map<String, Object> attrs = session.getAttributes();
+            Boolean already = (Boolean) attrs.getOrDefault(ATTR_DUR_WRITTEN, false);
+            if (Boolean.TRUE.equals(already)) return;
+
+            Instant startAt = (Instant) attrs.get(ATTR_START_AT);
+            if (startAt == null) {
+                log.warn("[WS][DUR] startAt 누락: id={}", session.getId());
+                return;
+            }
+            long seconds = Math.max(0, Duration.between(startAt, Instant.now()).getSeconds());
+            Long adviceId = (Long) attrs.get(ATTR_ADVICE_ID);
+            if (adviceId == null) {
+                log.warn("[WS][DUR] adviceId 누락: id={}", session.getId());
+                return;
+            }
+
+            // Service에서 advice를 로드하고 advice.writeDuration(seconds) 호출하도록 위임
+            adviceService.writeDuration(adviceId, seconds);
+            attrs.put(ATTR_DUR_WRITTEN, true);
+            log.info("[WS][DUR] 기록 완료: id={} adviceId={} duration={}s", session.getId(), adviceId, seconds);
+
+        } catch (Exception e) {
+            log.error("[WS][DUR] 기록 실패: id=" + session.getId(), e);
+        }
     }
 }
 

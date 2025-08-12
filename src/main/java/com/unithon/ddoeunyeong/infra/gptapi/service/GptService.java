@@ -11,7 +11,7 @@ import com.unithon.ddoeunyeong.domain.child.repository.ChildRepository;
 import com.unithon.ddoeunyeong.domain.utterance.dto.QuestionAndAnswer;
 import com.unithon.ddoeunyeong.global.exception.BaseResponse;
 import com.unithon.ddoeunyeong.infra.gptapi.dto.GptFinalRequest;
-import com.unithon.ddoeunyeong.infra.gptapi.dto.AdivceReportResponse;
+import com.unithon.ddoeunyeong.infra.gptapi.dto.GPTAdviceReportResponse;
 import com.unithon.ddoeunyeong.infra.s3.service.S3Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -241,7 +241,7 @@ public class GptService {
 		}
 	}
 
-	public AdivceReportResponse askGptMakeFinalReport(Long adviceId) throws IOException {
+	public GPTAdviceReportResponse askGptMakeFinalReport(Long adviceId) throws IOException {
 
 		Advice advice = adviceRepository.findById(adviceId).orElseThrow(() -> new CustomException(ErrorCode.NO_ADVICE));
 
@@ -302,6 +302,7 @@ public class GptService {
 			- coreQuestion: 지금까지 맥락에서 가장 중요한 집중 질문 1개 (가능하면 knowAboutChild를 반영)
 			- childAnswer: knowAboutChild에 대한 아이의 실제 발화 기반 답변. 아이의 발화에서 근거가 명확할 때만 작성.
 			  근거가 없으면 "해당 주제에 대해서 말하지 않았어요."로 둔다(추측 금지).
+			- otehrTalks: knowAboutChild와 관계 없이 이야기 한 내용에 대한 답변들.  
 			
 			중요 지침:
 			- getKnowInfo는 summary와 coreQuestion의 어투/맥락 반영에만 사용한다(점수엔 직접 가중치 주지 말 것).
@@ -313,9 +314,10 @@ public class GptService {
 			{
 			  "socialReferenceScore": 80,
 			  "cooperationKindnessScore": 100,
-			  "summary": "오늘 너는 친구와 선생님 이야기를 들려줬어. 같이 해 보자는 마음과 고마운 마음도 잘 표현했구나!",
+			  "summary": "오늘 00이는 친구와 선생님 이야기를 들려줬어요. 같이 해 보자는 마음과 고마운 마음도 잘 표현하고 있어요!",
 			  "coreQuestion": "오늘 가장 같이 하고 싶었던 놀이는 뭐였어?",
-			  "childAnswer": "블록 놀이를 친구랑 같이 하고 싶다고 했어."
+			  "childAnswer": "블록 놀이를 친구랑 같이 하고 싶다고 했어요.",
+			  "otehrTalks": "유치원 선생님과 노는게 세상에서 제일 재밌다고 했어요"
 			}
 			""";
 
@@ -352,23 +354,18 @@ public class GptService {
 
 		try {
 
-			AdivceReportResponse gpt = mapper.readValue(jsonOnly, AdivceReportResponse.class);
+			GPTAdviceReportResponse gpt = mapper.readValue(jsonOnly, GPTAdviceReportResponse.class);
 
 			Long socialScore = gpt.socialReferenceScore() == null ? 20 : Math.max(0, Math.min(100, gpt.socialReferenceScore()));
 			Long coopScore   = gpt.cooperationKindnessScore() == null ? 20 : Math.max(0, Math.min(100, gpt.cooperationKindnessScore()));
 			String summary  = gpt.summary() == null ? "" : gpt.summary();
 			String coreQ    = gpt.coreQuestion() == null ? "" : gpt.coreQuestion();
 			String childAns = gpt.childAnswer() == null ? "" : gpt.childAnswer();
+			String otherTalks = gpt.otherTalks() == null ? "" : gpt.otherTalks();
 
-			List<UserUtterance> utteranceList = userUtteranceRepository.findAllByAdviceId(adviceId);
-			int emotionScore = adviceService.calculateEmotionDiversityScore(utteranceList);
-			
 			// 4) Advice 엔티티 업데이트 후 저장
-			advice.updateAnalysisResult(socialScore, coopScore, summary,coreQ,childAns, emotionScore);
-
-
+			advice.updateGPTReportResult(socialScore, coopScore, summary,coreQ,childAns,otherTalks);
 			adviceRepository.save(advice);
-
 
 			return gpt;
 
